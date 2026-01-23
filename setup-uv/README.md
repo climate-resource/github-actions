@@ -89,6 +89,7 @@ For CodeArtifact to work, your `pyproject.toml` must define the private registry
 name = "private-registry"
 url = "https://{domain}-{domain-owner}.d.codeartifact.{region}.amazonaws.com/pypi/pypi/simple/"
 publish-url = "https://{domain}-{domain-owner}.d.codeartifact.{region}.amazonaws.com/pypi/pypi/"
+explicit=true
 
 [tool.uv.sources]
 my-private-package = { index = "private-registry" }
