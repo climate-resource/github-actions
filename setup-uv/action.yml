@@ -1,0 +1,85 @@
+name: "Setup uv"
+description: "Set up uv with optional CodeArtifact private registry access"
+
+inputs:
+  python-version:
+    description: "Python version to install"
+    required: false
+  uv-version:
+    description: "Version of uv to install"
+    required: false
+  working-directory:
+    description: "Working directory for uv commands"
+    required: false
+    default: "."
+
+  # CodeArtifact configuration
+  codeartifact:
+    description: "Enable CodeArtifact access: 'read', 'publish', or 'false'"
+    required: false
+    default: "false"
+  codeartifact-domain:
+    description: "CodeArtifact domain name"
+    required: false
+  codeartifact-domain-owner:
+    description: "CodeArtifact domain owner (AWS account ID)"
+    required: false
+  codeartifact-role-read:
+    description: "IAM role ARN for read access"
+    required: false
+  codeartifact-role-publish:
+    description: "IAM role ARN for publish access"
+    required: false
+  aws-region:
+    description: "AWS region for CodeArtifact"
+    required: false
+    default: "us-west-2"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Configure AWS credentials (read)
+      if: inputs.codeartifact == 'read'
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ inputs.codeartifact-role-read }}
+        aws-region: ${{ inputs.aws-region }}
+
+    - name: Configure AWS credentials (publish)
+      if: inputs.codeartifact == 'publish'
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ inputs.codeartifact-role-publish }}
+        aws-region: ${{ inputs.aws-region }}
+
+    - name: Get CodeArtifact token
+      if: inputs.codeartifact != 'false'
+      id: codeartifact
+      shell: bash
+      run: |
+        TOKEN=$(aws codeartifact get-authorization-token \
+          --domain "${{ inputs.codeartifact-domain }}" \
+          --domain-owner "${{ inputs.codeartifact-domain-owner }}" \
+          --query authorizationToken --output text)
+        echo "::add-mask::$TOKEN"
+        echo "token=$TOKEN" >> $GITHUB_OUTPUT
+
+    - name: Configure uv for CodeArtifact (read)
+      if: inputs.codeartifact != 'false'
+      shell: bash
+      run: |
+        echo "UV_INDEX_PRIVATE_REGISTRY_USERNAME=aws" >> $GITHUB_ENV
+        echo "UV_INDEX_PRIVATE_REGISTRY_PASSWORD=${{ steps.codeartifact.outputs.token }}" >> $GITHUB_ENV
+
+    - name: Configure uv for CodeArtifact (publish)
+      if: inputs.codeartifact == 'publish'
+      shell: bash
+      run: |
+        echo "UV_PUBLISH_USERNAME=aws" >> $GITHUB_ENV
+        echo "UV_PUBLISH_PASSWORD=${{ steps.codeartifact.outputs.token }}" >> $GITHUB_ENV
+
+    - name: Setup uv
+      uses: astral-sh/setup-uv@v6
+      with:
+        version: ${{ inputs.uv-version }}
+        python-version: ${{ inputs.python-version }}
