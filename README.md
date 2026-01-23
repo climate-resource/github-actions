@@ -4,8 +4,8 @@ Reusable GitHub Actions and workflows for Climate Resource repositories.
 
 ## Actions
 
-| Action | Description |
-|--------|-------------|
+| Action                 | Description                                 |
+| ---------------------- | ------------------------------------------- |
 | [setup-uv](./setup-uv) | Set up uv with optional CodeArtifact access |
 
 ## Usage

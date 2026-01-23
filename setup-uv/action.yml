@@ -13,6 +13,22 @@ inputs:
     required: false
     default: "."
 
+  # Cache configuration
+  enable-cache:
+    description: "Enable caching of the uv cache"
+    required: false
+    default: "true"
+  cache-dependency-glob:
+    description: "Glob pattern for cache dependency files"
+    required: false
+    default: "**/uv.lock"
+  cache-suffix:
+    description: "Suffix for the cache key"
+    required: false
+  cache-local-path:
+    description: "Path to a local cache directory"
+    required: false
+
   # CodeArtifact configuration
   codeartifact:
     description: "Enable CodeArtifact access: 'read', 'publish', or 'false'"
@@ -83,3 +99,7 @@ runs:
       with:
         version: ${{ inputs.uv-version }}
         python-version: ${{ inputs.python-version }}
+        enable-cache: ${{ inputs.enable-cache }}
+        cache-dependency-glob: ${{ inputs.cache-dependency-glob }}
+        cache-suffix: ${{ inputs.cache-suffix }}
+        cache-local-path: ${{ inputs.cache-local-path }}

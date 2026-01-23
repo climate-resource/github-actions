@@ -64,17 +64,21 @@ jobs:
 
 ## Inputs
 
-| Input | Description | Required | Default |
-|-------|-------------|----------|---------|
-| `python-version` | Python version to install | No | Project default |
-| `uv-version` | Version of uv to install | No | Latest |
-| `working-directory` | Working directory for uv commands | No | `.` |
-| `codeartifact` | Enable CodeArtifact: `read`, `publish`, or `false` | No | `false` |
-| `codeartifact-domain` | CodeArtifact domain name | No | - |
-| `codeartifact-domain-owner` | CodeArtifact domain owner (AWS account ID) | No | - |
-| `codeartifact-role-read` | IAM role ARN for read access | No | - |
-| `codeartifact-role-publish` | IAM role ARN for publish access | No | - |
-| `aws-region` | AWS region for CodeArtifact | No | `us-west-2` |
+| Input                       | Description                                        | Required | Default         |
+| --------------------------- | -------------------------------------------------- | -------- | --------------- |
+| `python-version`            | Python version to install                          | No       | Project default |
+| `uv-version`                | Version of uv to install                           | No       | Latest          |
+| `working-directory`         | Working directory for uv commands                  | No       | `.`             |
+| `enable-cache`              | Enable caching of the uv cache                     | No       | `true`          |
+| `cache-dependency-glob`     | Glob pattern for cache dependency files            | No       | `**/uv.lock`    |
+| `cache-suffix`              | Suffix for the cache key                           | No       | -               |
+| `cache-local-path`          | Path to a local cache directory                    | No       | -               |
+| `codeartifact`              | Enable CodeArtifact: `read`, `publish`, or `false` | No       | `false`         |
+| `codeartifact-domain`       | CodeArtifact domain name                           | No       | -               |
+| `codeartifact-domain-owner` | CodeArtifact domain owner (AWS account ID)         | No       | -               |
+| `codeartifact-role-read`    | IAM role ARN for read access                       | No       | -               |
+| `codeartifact-role-publish` | IAM role ARN for publish access                    | No       | -               |
+| `aws-region`                | AWS region for CodeArtifact                        | No       | `us-west-2`     |
 
 ## pyproject.toml Configuration
 
@@ -94,9 +98,9 @@ my-private-package = { index = "private-registry" }
 
 Set these as GitHub organization secrets:
 
-| Secret | Description |
-|--------|-------------|
-| `CODEARTIFACT_DOMAIN` | CodeArtifact domain name |
-| `CODEARTIFACT_DOMAIN_OWNER` | AWS account ID that owns the domain |
-| `CODEARTIFACT_ROLE_READ` | IAM role ARN for read access (all repos) |
+| Secret                      | Description                                        |
+| --------------------------- | -------------------------------------------------- |
+| `CODEARTIFACT_DOMAIN`       | CodeArtifact domain name                           |
+| `CODEARTIFACT_DOMAIN_OWNER` | AWS account ID that owns the domain                |
+| `CODEARTIFACT_ROLE_READ`    | IAM role ARN for read access (all repos)           |
 | `CODEARTIFACT_ROLE_PUBLISH` | IAM role ARN for publish access (restricted repos) |
