@@ -17,7 +17,7 @@ inputs:
   enable-cache:
     description: "Enable caching of the uv cache"
     required: false
-    default: "true"
+    default: "auto"
   cache-dependency-glob:
     description: "Glob pattern for cache dependency files"
     required: false
