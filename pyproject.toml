@@ -1,6 +1,6 @@
 [project]
 name = "github-actions"
-version = "0.0.0"
+version = "0.0.1"
 description = "Reusable GitHub Actions for Climate Resource"
 readme = "README.md"
 requires-python = ">=3.11"
