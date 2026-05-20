@@ -22,7 +22,8 @@ inputs:
     default: ""
   changelog-script:
     description: >
-      Optional path to a Python script that prints the latest changelog section to stdout (e.g. scripts/changelog-to-release-template.py).
+      Optional path to a Python script that prints the latest changelog section to stdout.
+      Only needed for project-specific changelog formatting; for a non-default changelog location use changelog-path instead.
       When set, its output replaces the auto-generated changelog block.
     required: false
     default: ""
