@@ -176,6 +176,6 @@ Once the project is on `uv`:
    the local `workflow_dispatch` definition.
 2. Delete `.github/workflows/release.yaml` — the reusable bump workflow drafts
    the release in the same run via `create-release: true`.
-3. Keep `scripts/changelog-to-release-template.py` if you need
-   project-specific changelog formatting and pass it via
-   `release-changelog-script`.
+3. If the changelog lives somewhere other than `CHANGELOG.md` (e.g. towncrier writes to `docs/changelog.md`),
+   set `release-changelog-path` — the action extracts the latest `<!-- towncrier release notes start -->` section itself.
+   A `release-changelog-script` is only needed for project-specific changelog formatting beyond that extraction.
