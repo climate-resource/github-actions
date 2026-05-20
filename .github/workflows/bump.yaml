@@ -120,19 +120,27 @@ jobs:
       is-prerelease: ${{ steps.bump.outputs.is-prerelease }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
           token: ${{ secrets.token || github.token }}
 
+      - name: Check out shared actions
+        uses: actions/checkout@v6.0.2
+        with:
+          repository: climate-resource/github-actions
+          ref: ${{ inputs.actions-ref }}
+          path: .github-actions-lib
+          token: ${{ secrets.token || github.token }}
+
       - name: Setup uv
-        uses: climate-resource/github-actions/setup-uv@${{ inputs.actions-ref }}
+        uses: ./.github-actions-lib/setup-uv
         with:
           python-version: ${{ inputs.python-version }}
 
       - name: Bump version
         id: bump
-        uses: climate-resource/github-actions/bump-version@${{ inputs.actions-ref }}
+        uses: ./.github-actions-lib/bump-version
         with:
           bump-rule: ${{ inputs.bump-rule }}
           pre-release-bump: ${{ inputs.pre-release-bump }}
@@ -151,7 +159,7 @@ jobs:
 
       - name: Draft GitHub release
         if: inputs.create-release && steps.bump.outputs.is-prerelease != 'true'
-        uses: climate-resource/github-actions/draft-release@${{ inputs.actions-ref }}
+        uses: ./.github-actions-lib/draft-release
         with:
           token: ${{ secrets.token || github.token }}
           tag: ${{ steps.bump.outputs.tag }}
