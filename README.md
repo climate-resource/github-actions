@@ -49,21 +49,56 @@ on:
       bump_rule:
         type: choice
         description: How to bump the project's version
+        required: true
         options:
           - patch
           - minor
           - major
           - stable
+          - "patch alpha"
+          - "patch beta"
+          - "patch rc"
           - "minor alpha"
           - "minor beta"
           - "minor rc"
-        required: true
+          - "major alpha"
+          - "major beta"
+          - "major rc"
+      pre_release_bump:
+        type: choice
+        description: Pre-release segment for the post-tag commit on main
+        required: false
+        default: dev
+        options:
+          - dev
+          - alpha
+          - beta
+          - rc
+          - none
+      pre_release_base:
+        type: choice
+        description: Base bump applied before the pre-release segment on main
+        required: false
+        default: patch
+        options:
+          - patch
+          - minor
+          - major
+          - none
+      update_changelog:
+        type: boolean
+        description: Run towncrier to update the CHANGELOG before tagging
+        required: false
+        default: true
 
 jobs:
   bump:
     uses: climate-resource/github-actions/.github/workflows/bump.yaml@v1
     with:
       bump-rule: ${{ inputs.bump_rule }}
+      pre-release-bump: ${{ inputs.pre_release_bump }}
+      pre-release-base: ${{ inputs.pre_release_base }}
+      update-changelog: ${{ inputs.update_changelog }}
       python-version: "3.13"
       create-release: true
       build-command: "uv build"
