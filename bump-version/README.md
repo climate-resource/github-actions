@@ -27,6 +27,7 @@ The action assumes:
 | `commit-email` | `ci-runner@climate-resource.invalid` | Author email for both commits. |
 | `workspace-packages` | _empty_ | Newline-separated workspace package names to mirror the version onto. |
 | `lock` | `true` | Run `uv lock` after each version change. |
+| `pre-commit-command` | _empty_ | Shell command run after the changelog build and before each bump commit. Use it to regenerate version-derived files (e.g. an OpenAPI schema) so they stay in sync in the tagged commit. The command must succeed; a non-zero exit aborts the bump. |
 | `pre-commit-skip` | `false` | Pass `-n` to `git commit` to bypass pre-commit hooks. |
 | `push` | `true` | Push the bump commit, tag, and pre-release commit. |
 
@@ -48,13 +49,16 @@ The action assumes:
 4. If `update-changelog: true`, runs
    `uv run towncrier build --yes --version v$NEW_VERSION`.
 5. Optionally `uv lock`.
-6. `git commit -a -m "bump: version $BASE_VERSION -> $NEW_VERSION"`.
-7. `git tag v$NEW_VERSION`.
-8. Pushes the commit and tag.
-9. If `pre-release-bump != none` and the tagged version is not already a
-   pre-release, applies `pre-release-base` (default `patch`) then
-   `pre-release-bump` (default `dev`), mirrors workspace packages, locks, and
-   creates a `bump(<pre-release-bump>): ...` commit which is pushed.
+6. If `pre-commit-command` is set, runs it (so version-derived files are
+   regenerated before the commit).
+7. `git commit -a -m "bump: version $BASE_VERSION -> $NEW_VERSION"`.
+8. `git tag v$NEW_VERSION`.
+9. Pushes the commit and tag.
+10. If `pre-release-bump != none` and the tagged version is not already a
+    pre-release, applies `pre-release-base` (default `patch`) then
+    `pre-release-bump` (default `dev`), mirrors workspace packages, locks, runs
+    `pre-commit-command` again, and creates a `bump(<pre-release-bump>): ...`
+    commit which is pushed.
 
 ## Example
 

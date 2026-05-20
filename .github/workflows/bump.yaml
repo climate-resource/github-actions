@@ -48,6 +48,11 @@ on:
         required: false
         type: string
         default: "ci-runner@climate-resource.invalid"
+      pre-commit-command:
+        description: "Optional shell command run before each bump commit to regenerate version-derived files."
+        required: false
+        type: string
+        default: ""
       python-version:
         description: "Python version to install via setup-uv."
         required: false
@@ -145,6 +150,7 @@ jobs:
           update-changelog: ${{ inputs.update-changelog }}
           workspace-packages: ${{ inputs.workspace-packages }}
           commit-email: ${{ inputs.commit-email }}
+          pre-commit-command: ${{ inputs.pre-commit-command }}
 
       - name: Build artifacts
         if: inputs.create-release && inputs.build-command != '' && steps.bump.outputs.is-prerelease != 'true'
