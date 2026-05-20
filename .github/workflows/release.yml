@@ -21,10 +21,10 @@ jobs:
       contents: write
     with:
       bump-rule: ${{ inputs.bump }}
-      update-changelog: false
+      update-changelog: true
       pre-release-bump: none
       create-release: true
-      release-draft: false
+      release-draft: true
       # Pin the composite actions to the dispatched commit so the release exercises the current code, not the @v1 tag.
       actions-ref: ${{ github.sha }}
 

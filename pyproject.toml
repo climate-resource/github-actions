@@ -4,3 +4,50 @@ version = "1.1.0"
 description = "Reusable GitHub Actions for Climate Resource"
 readme = "README.md"
 requires-python = ">=3.11"
+
+[dependency-groups]
+dev = [
+    "towncrier>=23.6.0",
+]
+
+[tool.towncrier]
+filename = "CHANGELOG.md"
+directory = "changelog/"
+title_format = "## github-actions {version} ({project_date})"
+underlines = ["", "", ""]
+issue_format = "[#{issue}](https://github.com/climate-resource/github-actions/pull/{issue})"
+
+  [[tool.towncrier.type]]
+  directory = "breaking"
+  name = "Breaking Changes"
+  showcontent = true
+
+  [[tool.towncrier.type]]
+  directory = "deprecation"
+  name = "Deprecations"
+  showcontent = true
+
+  [[tool.towncrier.type]]
+  directory = "feature"
+  name = "Features"
+  showcontent = true
+
+  [[tool.towncrier.type]]
+  directory = "improvement"
+  name = "Improvements"
+  showcontent = true
+
+  [[tool.towncrier.type]]
+  directory = "fix"
+  name = "Bug Fixes"
+  showcontent = true
+
+  [[tool.towncrier.type]]
+  directory = "docs"
+  name = "Improved Documentation"
+  showcontent = true
+
+  [[tool.towncrier.type]]
+  directory = "trivial"
+  name = "Trivial/Internal Changes"
+  showcontent = false
