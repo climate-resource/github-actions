@@ -49,11 +49,11 @@ inputs:
     default: "true"
   pre-commit-command:
     description: >
-      Optional shell command run after the changelog build and before each
-      bump commit. Use it to regenerate version-derived files (e.g. an OpenAPI
-      schema) so they stay in sync in the tagged commit. The commit uses
-      `git commit -a`, so any files the command regenerates are picked up
-      automatically. The command must succeed; a non-zero exit aborts the bump.
+      Optional shell command run after the changelog build and before each bump commit. 
+      
+      Use it to regenerate version-derived files (e.g. an OpenAPI schema) so they stay in sync in the tagged commit. 
+      The commit uses `git commit -a`, so any files the command regenerates are picked up automatically. 
+      The command must succeed; a non-zero exit aborts the bump.
     required: false
     default: ""
   pre-commit-skip:
