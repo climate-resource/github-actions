@@ -47,6 +47,15 @@ inputs:
     description: "If 'true', run `uv lock` after each version change."
     required: false
     default: "true"
+  pre-commit-command:
+    description: >
+      Optional shell command run after the changelog build and before each bump commit. 
+      
+      Use it to regenerate version-derived files (e.g. an OpenAPI schema) so they stay in sync in the tagged commit. 
+      The commit uses `git commit -a`, so any files the command regenerates are picked up automatically. 
+      The command must succeed; a non-zero exit aborts the bump.
+    required: false
+    default: ""
   pre-commit-skip:
     description: "If 'true', pass -n to git commit to skip pre-commit hooks."
     required: false
@@ -92,6 +101,7 @@ runs:
         UPDATE_CHANGELOG: ${{ inputs.update-changelog }}
         WORKSPACE_PACKAGES: ${{ inputs.workspace-packages }}
         RUN_LOCK: ${{ inputs.lock }}
+        PRE_COMMIT_COMMAND: ${{ inputs.pre-commit-command }}
         COMMIT_SKIP_HOOKS: ${{ inputs.pre-commit-skip }}
         DO_PUSH: ${{ inputs.push }}
       run: |
@@ -121,6 +131,13 @@ runs:
           fi
         }
 
+        run_pre_commit_command() {
+          if [[ -n "${PRE_COMMIT_COMMAND}" ]]; then
+            echo "Running pre-commit command"
+            bash -c "${PRE_COMMIT_COMMAND}"
+          fi
+        }
+
         BASE_VERSION="$(uv version --short)"
         echo "Bumping from version ${BASE_VERSION}"
 
@@ -146,6 +163,8 @@ runs:
         else
           echo "Skipping changelog update"
         fi
+
+        run_pre_commit_command
 
         git commit "${commit_args[@]}" -a -m "bump: version ${BASE_VERSION} -> ${NEW_VERSION}"
         git tag "v${NEW_VERSION}"
@@ -190,6 +209,7 @@ runs:
 
         mirror_workspace "${DEV_VERSION}"
         maybe_lock
+        run_pre_commit_command
 
         git commit "${commit_args[@]}" -a -m "bump(${PRE_RELEASE_BUMP}): version ${PREV_VERSION} > ${DEV_VERSION}"
 
