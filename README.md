@@ -153,6 +153,14 @@ This repository uses semantic versioning. Use a major version tag (e.g., `@v1`) 
 - `@v1.2.3` - Specific version
 - `@main` - Latest (may include breaking changes)
 
+## Development
+
+Lint workflow changes locally with:
+
+```bash
+actionlint
+```
+
 ## Migrating existing projects
 
 This action only supports `uv version --bump`. Projects on `poetry version`
