@@ -15,8 +15,7 @@
 # when the release is auto-published and downstream workflows must fire. In
 # that case pass it as `secrets: token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}`.
 
-name: Bump (reusable)
-
+name: Bump
 on:
   workflow_call:
     inputs:
@@ -88,10 +87,9 @@ on:
       token:
         description: >
           Optional PAT used to push commits/tags and create the release.
-          Defaults to the workflow's GITHUB_TOKEN. Provide a PAT when the repo
-          has branch protection that blocks the github-actions bot, or when
-          the release is auto-published and downstream `release: published`
-          workflows must fire.
+          Defaults to the workflow's GITHUB_TOKEN. 
+          Provide a PAT when the repo has branch protection that blocks the github-actions bot, 
+          or when the release is auto-published and downstream `release: published` workflows must fire.
         required: false
     outputs:
       base-version:
