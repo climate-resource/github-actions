@@ -51,10 +51,10 @@ on:
         description: How to bump the project's version
         required: true
         options:
+          - stable
           - patch
           - minor
           - major
-          - stable
           - "patch alpha"
           - "patch beta"
           - "patch rc"

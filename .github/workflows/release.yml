@@ -22,9 +22,11 @@ jobs:
     with:
       bump-rule: ${{ inputs.bump }}
       update-changelog: true
-      pre-release-bump: none
+      # Generate a GitHub release
       create-release: true
       release-draft: true
+      # Don't immediately bump the version after a tagged release
+      pre-release-bump: none
       # Pin the composite actions to the dispatched commit so the release exercises the current code, not the @v1 tag.
       actions-ref: ${{ github.sha }}
 

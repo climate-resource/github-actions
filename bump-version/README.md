@@ -2,23 +2,19 @@
 
 Composite action that bumps a Python project's version with `uv version --bump`,
 updates the CHANGELOG via towncrier, commits, tags, pushes, and (by default)
-lands a follow-up commit that moves `main` onto a pre-release version so future
-commits don't share the tagged version.
+lands a follow-up commit that moves `main` onto a pre-release version so future commits don't share the tagged version.
 
 ## Prerequisites
 
 The action assumes:
 
 - `uv` is on PATH (use [`setup-uv`](../setup-uv) before this action).
-- The checked-out repo has full history (`fetch-depth: 0`). The default
-  `GITHUB_TOKEN` is sufficient to push the bump commit and tag. Check out
-  with a PAT only when branch protection blocks the `github-actions` bot,
-  or when downstream workflows must fire from the tag push (a push made
-  with `GITHUB_TOKEN` does not trigger other workflows).
-- The project's `pyproject.toml` is managed by `uv` (i.e. `uv version --short`
-  returns the current version).
-- `towncrier` is available via `uv run` when `update-changelog: true`
-  (the default).
+- The checked-out repo has full history (`fetch-depth: 0`).
+  The default  `GITHUB_TOKEN` is sufficient to push the bump commit and tag.
+  Check out with a PAT only when branch protection blocks the `github-actions` bot,
+  or when downstream workflows must fire from the tag push (a push made with `GITHUB_TOKEN` does not trigger other workflows).
+- The project's `pyproject.toml` is managed by `uv` (i.e. `uv version --short` returns the current version).
+- `towncrier` is available via `uv run` when `update-changelog: true` (the default).
 
 ## Inputs
 
@@ -42,7 +38,7 @@ The action assumes:
 | `new-version` | Tagged version (no `v` prefix). |
 | `tag` | New git tag, with `v` prefix. |
 | `dev-version` | Pre-release version landed on `main` after tagging (when applicable). |
-| `is-prerelease` | `'true'` when the tagged version matches `(a|b|rc|dev)`. Use to gate downstream release steps. |
+| `is-prerelease` | `'true'` when the tagged version matches `(a\|b\|rc\|dev)`. Use to gate downstream release steps. |
 
 ## Behaviour
 
