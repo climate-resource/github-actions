@@ -17,6 +17,19 @@ You *may* edit previous changelogs to fix problems like typo corrections or such
 
 <!-- towncrier release notes start -->
 
+## github-actions v1.2.0 (2026-05-20)
+
+### Breaking Changes
+
+- Removed the `actions-ref` input from the reusable bump workflow.
+  The shared composite actions are now pinned to the `v1` tag, matching the workflow's own major version. ([#12](https://github.com/climate-resource/github-actions/pull/12))
+
+### Improvements
+
+- The reusable bump workflow now references its composite actions directly instead of checking out `climate-resource/github-actions` with `github.token`.
+  Private consumer repositories no longer need a PAT to fetch the shared actions. ([#12](https://github.com/climate-resource/github-actions/pull/12))
+
+
 ## github-actions v1.1.1 (2026-05-20)
 
 ### Trivial/Internal Changes
