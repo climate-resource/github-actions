@@ -59,10 +59,15 @@ on:
         type: string
         default: "ubuntu-latest"
       create-release:
-        description: "Run the draft-release step after bumping."
+        description: "Run the release step after bumping."
         required: false
         type: boolean
         default: false
+      release-draft:
+        description: "Create the GitHub release as a draft. Set false to auto-publish."
+        required: false
+        type: boolean
+        default: true
       release-files:
         description: "Newline-separated globs of files to attach to the release."
         required: false
@@ -157,7 +162,7 @@ jobs:
         run: |
           bash -c "${BUILD_COMMAND}"
 
-      - name: Draft GitHub release
+      - name: Create GitHub release
         if: inputs.create-release && steps.bump.outputs.is-prerelease != 'true'
         uses: ./.github-actions-lib/draft-release
         with:
@@ -165,6 +170,7 @@ jobs:
           tag: ${{ steps.bump.outputs.tag }}
           files: ${{ inputs.release-files }}
           changelog-script: ${{ inputs.release-changelog-script }}
+          draft: ${{ inputs.release-draft }}
 
       - name: Skipped release (pre-release tag)
         if: inputs.create-release && steps.bump.outputs.is-prerelease == 'true'
