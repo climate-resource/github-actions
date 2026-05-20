@@ -24,7 +24,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v8.1.0
 
       - name: Configure git
         run: |
@@ -33,10 +33,12 @@ jobs:
 
       - name: Bump version
         id: version
+        env:
+          BUMP_RULE: ${{ inputs.bump }}
         run: |
-          uv version --bump ${{ inputs.bump }}
+          uv version --bump "$BUMP_RULE"
           VERSION=$(uv version --short)
-          echo "version=v${VERSION}" >> $GITHUB_OUTPUT
+          echo "version=v${VERSION}" >> "$GITHUB_OUTPUT"
           echo "New version: v${VERSION}"
 
       - name: Commit and tag
