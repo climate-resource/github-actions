@@ -122,7 +122,7 @@ runs:
         cat "${RELEASE_TEMPLATE}"
 
     - name: Create release draft
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@v3.0.0
       with:
         tag_name: ${{ steps.version.outputs.tag }}
         body_path: ${{ inputs.release-template }}

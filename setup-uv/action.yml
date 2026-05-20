@@ -56,14 +56,14 @@ runs:
   steps:
     - name: Configure AWS credentials (read)
       if: inputs.codeartifact == 'read'
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@v6.1.1
       with:
         role-to-assume: ${{ inputs.codeartifact-role-read }}
         aws-region: ${{ inputs.aws-region }}
 
     - name: Configure AWS credentials (publish)
       if: inputs.codeartifact == 'publish'
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@v6.1.1
       with:
         role-to-assume: ${{ inputs.codeartifact-role-publish }}
         aws-region: ${{ inputs.aws-region }}
@@ -95,7 +95,7 @@ runs:
         echo "UV_PUBLISH_PASSWORD=${{ steps.codeartifact.outputs.token }}" >> $GITHUB_ENV
 
     - name: Setup uv
-      uses: astral-sh/setup-uv@v6
+      uses: astral-sh/setup-uv@v8.1.0
       with:
         version: ${{ inputs.uv-version }}
         python-version: ${{ inputs.python-version }}
