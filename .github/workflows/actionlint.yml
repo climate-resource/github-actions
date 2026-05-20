@@ -14,7 +14,8 @@ on:
       - ".github/workflows/*.yaml"
       - "**/action.yml"
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   actionlint:
