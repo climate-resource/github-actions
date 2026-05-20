@@ -27,8 +27,6 @@ jobs:
       release-draft: true
       # Don't immediately bump the version after a tagged release
       pre-release-bump: none
-      # Pin the composite actions to the dispatched commit so the release exercises the current code, not the @v1 tag.
-      actions-ref: ${{ github.sha }}
 
   update-tags:
     name: Update major and minor tags
