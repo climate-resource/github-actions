@@ -6,10 +6,14 @@
 #   jobs:
 #     bump:
 #       uses: climate-resource/github-actions/.github/workflows/bump.yaml@v1
+#       permissions:
+#         contents: write
 #       with:
 #         bump-rule: ${{ inputs.bump_rule }}
-#       secrets:
-#         token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+#
+# A PAT is only needed when branch protection blocks the github-actions bot or
+# when the release is auto-published and downstream workflows must fire. In
+# that case pass it as `secrets: token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}`.
 
 name: Bump (reusable)
 
@@ -82,8 +86,13 @@ on:
         default: "v1"
     secrets:
       token:
-        description: "PAT used to push commits/tags and create the release. Required."
-        required: true
+        description: >
+          Optional PAT used to push commits/tags and create the release.
+          Defaults to the workflow's GITHUB_TOKEN. Provide a PAT when the repo
+          has branch protection that blocks the github-actions bot, or when
+          the release is auto-published and downstream `release: published`
+          workflows must fire.
+        required: false
     outputs:
       base-version:
         description: "Version prior to bump."
@@ -103,6 +112,8 @@ jobs:
     name: "Bump version and create changelog"
     if: "!startsWith(github.event.head_commit.message, 'bump:')"
     runs-on: ${{ inputs.runs-on }}
+    permissions:
+      contents: write
     outputs:
       base-version: ${{ steps.bump.outputs.base-version }}
       new-version: ${{ steps.bump.outputs.new-version }}
@@ -114,7 +125,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          token: ${{ secrets.token }}
+          token: ${{ secrets.token || github.token }}
 
       - name: Setup uv
         uses: climate-resource/github-actions/setup-uv@${{ inputs.actions-ref }}
@@ -144,7 +155,7 @@ jobs:
         if: inputs.create-release && steps.bump.outputs.is-prerelease != 'true'
         uses: climate-resource/github-actions/draft-release@${{ inputs.actions-ref }}
         with:
-          token: ${{ secrets.token }}
+          token: ${{ secrets.token || github.token }}
           tag: ${{ steps.bump.outputs.tag }}
           files: ${{ inputs.release-files }}
           changelog-script: ${{ inputs.release-changelog-script }}

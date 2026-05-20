@@ -69,9 +69,23 @@ jobs:
       build-command: "uv build"
       release-files: |
         dist/*
-    secrets:
-      token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 ```
+
+### When do I need a PAT?
+
+The reusable workflow uses the built-in `GITHUB_TOKEN` by default,
+so no secret needs to be wired up.
+Pass `secrets: token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}` only when:
+
+- `main` has branch protection that blocks pushes from `github-actions[bot]`.
+- The release is auto-published (not drafted)
+  and downstream workflows listening on `release: published` must fire.
+  Releases created with `GITHUB_TOKEN` do not trigger other workflows.
+  A manually published draft fires downstream workflows
+  under the publishing user's identity,
+  so the default draft flow works without a PAT.
+- A separate workflow listens for the bump tag-push
+  and must fire from this run.
 
 ### uv workspace projects (multiple packages)
 
@@ -90,8 +104,6 @@ jobs:
         uv build --package bookshelf-producer -o dist
       release-files: |
         dist/*
-    secrets:
-      token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 ```
 
 ### Skipping the changelog or the pre-release dev commit

@@ -10,8 +10,11 @@ commits don't share the tagged version.
 The action assumes:
 
 - `uv` is on PATH (use [`setup-uv`](../setup-uv) before this action).
-- The checked-out repo has full history (`fetch-depth: 0`) and was checked out
-  with a PAT so the resulting push triggers downstream workflows.
+- The checked-out repo has full history (`fetch-depth: 0`). The default
+  `GITHUB_TOKEN` is sufficient to push the bump commit and tag. Check out
+  with a PAT only when branch protection blocks the `github-actions` bot,
+  or when downstream workflows must fire from the tag push (a push made
+  with `GITHUB_TOKEN` does not trigger other workflows).
 - The project's `pyproject.toml` is managed by `uv` (i.e. `uv version --short`
   returns the current version).
 - `towncrier` is available via `uv run` when `update-changelog: true`
