@@ -17,6 +17,14 @@ You *may* edit previous changelogs to fix problems like typo corrections or such
 
 <!-- towncrier release notes start -->
 
+## github-actions v1.3.0 (2026-05-20)
+
+### Features
+
+- Added a `pre-commit-command` input to the `bump-version` action and the reusable bump workflow.
+  The command runs before each bump commit, so projects can regenerate version-derived files (e.g. an OpenAPI schema) and keep them in sync in the tagged commit. ([#15](https://github.com/climate-resource/github-actions/pull/15))
+
+
 ## github-actions v1.2.0 (2026-05-20)
 
 ### Breaking Changes
