@@ -1,0 +1,165 @@
+# Reusable workflow: bump version (optionally with changelog) and optionally
+# draft a GitHub release in the same dispatch.
+#
+# Consumer projects call this from a thin `bump.yaml` in their own repo:
+#
+#   jobs:
+#     bump:
+#       uses: climate-resource/github-actions/.github/workflows/bump.yaml@v1
+#       permissions:
+#         contents: write
+#       with:
+#         bump-rule: ${{ inputs.bump_rule }}
+#
+# A PAT is only needed when branch protection blocks the github-actions bot or
+# when the release is auto-published and downstream workflows must fire. In
+# that case pass it as `secrets: token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}`.
+
+name: Bump
+on:
+  workflow_call:
+    inputs:
+      bump-rule:
+        description: "uv version --bump rule (patch|minor|major|alpha|beta|rc|stable)."
+        required: true
+        type: string
+      pre-release-bump:
+        description: "Pre-release segment for the post-tag commit (dev|alpha|beta|rc|none)."
+        required: false
+        type: string
+        default: "dev"
+      pre-release-base:
+        description: "Base bump applied before the pre-release segment (patch|minor|major|none)."
+        required: false
+        type: string
+        default: "patch"
+      update-changelog:
+        description: "Run towncrier to update CHANGELOG before tagging."
+        required: false
+        type: boolean
+        default: true
+      workspace-packages:
+        description: "Newline-separated uv workspace packages to mirror the version onto."
+        required: false
+        type: string
+        default: ""
+      commit-email:
+        description: "Email for the CI commit author."
+        required: false
+        type: string
+        default: "ci-runner@climate-resource.invalid"
+      python-version:
+        description: "Python version to install via setup-uv."
+        required: false
+        type: string
+        default: ""
+      runs-on:
+        description: "Runner label for the bump job."
+        required: false
+        type: string
+        default: "ubuntu-latest"
+      create-release:
+        description: "Run the draft-release step after bumping."
+        required: false
+        type: boolean
+        default: false
+      release-files:
+        description: "Newline-separated globs of files to attach to the release."
+        required: false
+        type: string
+        default: ""
+      release-changelog-script:
+        description: "Optional path to a script that prints the latest changelog section."
+        required: false
+        type: string
+        default: ""
+      build-command:
+        description: "Optional shell command run before the release step (e.g. 'uv build')."
+        required: false
+        type: string
+        default: ""
+      actions-ref:
+        description: "Ref of climate-resource/github-actions to pin composite actions to."
+        required: false
+        type: string
+        default: "v1"
+    secrets:
+      token:
+        description: >
+          Optional PAT used to push commits/tags and create the release.
+          Defaults to the workflow's GITHUB_TOKEN. 
+          Provide a PAT when the repo has branch protection that blocks the github-actions bot, 
+          or when the release is auto-published and downstream `release: published` workflows must fire.
+        required: false
+    outputs:
+      base-version:
+        description: "Version prior to bump."
+        value: ${{ jobs.bump.outputs.base-version }}
+      new-version:
+        description: "Version after bump (no v prefix)."
+        value: ${{ jobs.bump.outputs.new-version }}
+      tag:
+        description: "Git tag created (with v prefix)."
+        value: ${{ jobs.bump.outputs.tag }}
+      dev-version:
+        description: "Pre-release version landed on main after tagging (if any)."
+        value: ${{ jobs.bump.outputs.dev-version }}
+
+jobs:
+  bump:
+    name: "Bump version and create changelog"
+    if: "!startsWith(github.event.head_commit.message, 'bump:')"
+    runs-on: ${{ inputs.runs-on }}
+    permissions:
+      contents: write
+    outputs:
+      base-version: ${{ steps.bump.outputs.base-version }}
+      new-version: ${{ steps.bump.outputs.new-version }}
+      tag: ${{ steps.bump.outputs.tag }}
+      dev-version: ${{ steps.bump.outputs.dev-version }}
+      is-prerelease: ${{ steps.bump.outputs.is-prerelease }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.token || github.token }}
+
+      - name: Setup uv
+        uses: climate-resource/github-actions/setup-uv@${{ inputs.actions-ref }}
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Bump version
+        id: bump
+        uses: climate-resource/github-actions/bump-version@${{ inputs.actions-ref }}
+        with:
+          bump-rule: ${{ inputs.bump-rule }}
+          pre-release-bump: ${{ inputs.pre-release-bump }}
+          pre-release-base: ${{ inputs.pre-release-base }}
+          update-changelog: ${{ inputs.update-changelog }}
+          workspace-packages: ${{ inputs.workspace-packages }}
+          commit-email: ${{ inputs.commit-email }}
+
+      - name: Build artifacts
+        if: inputs.create-release && inputs.build-command != '' && steps.bump.outputs.is-prerelease != 'true'
+        shell: bash
+        env:
+          BUILD_COMMAND: ${{ inputs.build-command }}
+        run: |
+          bash -c "${BUILD_COMMAND}"
+
+      - name: Draft GitHub release
+        if: inputs.create-release && steps.bump.outputs.is-prerelease != 'true'
+        uses: climate-resource/github-actions/draft-release@${{ inputs.actions-ref }}
+        with:
+          token: ${{ secrets.token || github.token }}
+          tag: ${{ steps.bump.outputs.tag }}
+          files: ${{ inputs.release-files }}
+          changelog-script: ${{ inputs.release-changelog-script }}
+
+      - name: Skipped release (pre-release tag)
+        if: inputs.create-release && steps.bump.outputs.is-prerelease == 'true'
+        shell: bash
+        run: |
+          echo "::notice::Skipping draft GitHub release for pre-release tag ${{ steps.bump.outputs.tag }}"
