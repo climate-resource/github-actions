@@ -153,6 +153,10 @@ This repository uses semantic versioning. Use a major version tag (e.g., `@v1`) 
 - `@v1.2.3` - Specific version
 - `@main` - Latest (may include breaking changes)
 
+The `bump.yaml` workflow pins its own first-party actions (`setup-uv`, `bump-version`, `draft-release`),
+to the released version at tag time,
+so a `@v1.2.3` pin of the workflow resolves to a fixed set of nested actions rather than letting them float independently.
+
 ## Development
 
 Lint workflow changes locally with:
