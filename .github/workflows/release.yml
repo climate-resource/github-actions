@@ -27,6 +27,8 @@ jobs:
       release-draft: true
       # Don't immediately bump the version after a tagged release
       pre-release-bump: none
+      # Pin bump.yaml's first-party action refs to the released version
+      pre-commit-command: bash scripts/pin-bump-refs.sh
 
   update-tags:
     name: Update major and minor tags
