@@ -17,6 +17,18 @@ You *may* edit previous changelogs to fix problems like typo corrections or such
 
 <!-- towncrier release notes start -->
 
+## github-actions v1.3.1 (2026-05-21)
+
+### Features
+
+- The release workflow now pins `bump.yaml`'s first-party action refs (`setup-uv`, `bump-version`, `draft-release`) to the exact released version before tagging.
+  Consumers who pin `bump.yaml@vX.Y.Z` now get a reproducible set of nested actions instead of refs floating at `@v1`. ([#16](https://github.com/climate-resource/github-actions/pull/16))
+
+### Trivial/Internal Changes
+
+- [#17](https://github.com/climate-resource/github-actions/pull/17), [#18](https://github.com/climate-resource/github-actions/pull/18)
+
+
 ## github-actions v1.3.0 (2026-05-20)
 
 ### Features
