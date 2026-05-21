@@ -29,6 +29,9 @@ jobs:
       pre-release-bump: none
       # Pin bump.yaml's first-party action refs to the released version
       pre-commit-command: bash scripts/pin-bump-refs.sh
+    secrets:
+      # PAT needded to modify a workflow
+      token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 
   update-tags:
     name: Update major and minor tags
