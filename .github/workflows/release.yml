@@ -22,9 +22,9 @@ jobs:
     with:
       bump-rule: ${{ inputs.bump }}
       update-changelog: true
-      # Generate a GitHub release
+      # Generate a GitHub release (without a draft)
       create-release: true
-      release-draft: true
+      release-draft: false
       # Don't immediately bump the version after a tagged release
       pre-release-bump: none
       # Pin bump.yaml's first-party action refs to the released version
