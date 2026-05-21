@@ -116,6 +116,10 @@ Pass `secrets: token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}` only when:
   Releases created with `GITHUB_TOKEN` do not trigger other workflows.
   A manually published draft fires downstream workflows under the publishing user's identity, so the default draft flow works without a PAT.
 - A separate workflow listens for the bump tag-push and must fire from this run.
+- A `pre-commit-command` regenerates a file under `.github/workflows/`.
+  `GITHUB_TOKEN` may not push workflow-file changes, so the PAT must additionally
+  carry the `workflow` scope (classic PAT) or the repository "Workflows" write
+  permission (fine-grained PAT).
 
 ### uv workspace projects (multiple packages)
 
