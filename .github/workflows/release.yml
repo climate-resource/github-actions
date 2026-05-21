@@ -30,9 +30,7 @@ jobs:
       # Pin bump.yaml's first-party action refs to the released version
       pre-commit-command: bash scripts/pin-bump-refs.sh
     secrets:
-      # pin-bump-refs.sh rewrites .github/workflows/bump.yaml in the bump
-      # commit. GITHUB_TOKEN may not push workflow-file changes, so the push
-      # needs a PAT carrying the `workflow` scope.
+      # PAT needded to modify a workflow
       token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 
   update-tags:
