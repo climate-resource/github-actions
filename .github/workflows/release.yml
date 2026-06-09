@@ -40,7 +40,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6.0.3
         with:
           # Check out the release commit so the moving tags point at it.
           ref: ${{ needs.bump.outputs.tag }}
