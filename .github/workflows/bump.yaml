@@ -114,6 +114,11 @@ on:
         required: false
         type: string
         default: ""
+      submodules:
+        description: "Check out submodules. Default: '' (don't check out submodules), Options: 'true', 'recursive'"
+        required: false
+        type: string
+        default: ''
     secrets:
       token:
         description: >
@@ -155,6 +160,7 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.token || github.token }}
+          submodules: ${{ inputs.submodules }}
 
       - name: Setup uv
         uses: climate-resource/github-actions/setup-uv@v1.3.1
