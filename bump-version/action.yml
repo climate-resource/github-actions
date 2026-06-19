@@ -64,6 +64,11 @@ inputs:
     description: "If 'true', push the bump commit, tag, and pre-release commit."
     required: false
     default: "true"
+  submodules:
+    description: "Check out submodules. Default: '' (don't check out submodules), Options: 'true', 'recursive'"
+    required: false
+    type: string
+    default: ''
 
 outputs:
   base-version:
@@ -104,8 +109,20 @@ runs:
         PRE_COMMIT_COMMAND: ${{ inputs.pre-commit-command }}
         COMMIT_SKIP_HOOKS: ${{ inputs.pre-commit-skip }}
         DO_PUSH: ${{ inputs.push }}
+        SUBMODULES: ${{ inputs.submodules }}
       run: |
         set -euo pipefail
+
+        if [[ "${SUBMODULES}" == "recursive" ]]; then
+          echo "Checking out submoules recursively"
+          git submodules update --init --recursive
+        elif [[ "${SUBMODULES}" == "true" ]]; then
+          echo "Checking out submoules"
+          git submodules update --init
+        elif [[ "${SUBMODULES}" != "" ]]; then
+          echo "Invalid submodules option '${SUBMODULES}'" >&2
+          exit 1
+        fi
 
         commit_args=()
         if [[ "${COMMIT_SKIP_HOOKS}" == "true" ]]; then
