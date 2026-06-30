@@ -111,7 +111,7 @@ runs:
         DO_PUSH: ${{ inputs.push }}
         SUBMODULES: ${{ inputs.submodules }}
       run: |
-        set -euo pipefail -i
+        set -euo pipefail -x
 
         if [[ "${SUBMODULES}" == "recursive" ]]; then
           echo "Checking out submoules recursively"
