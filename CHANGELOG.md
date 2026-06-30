@@ -17,6 +17,11 @@ You *may* edit previous changelogs to fix problems like typo corrections or such
 
 <!-- towncrier release notes start -->
 
+## github-actions v1.4.3 (2026-06-30)
+
+No significant changes.
+
+
 ## github-actions v1.4.1 (2026-06-30)
 
 No significant changes.

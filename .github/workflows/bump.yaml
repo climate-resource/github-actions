@@ -163,13 +163,13 @@ jobs:
           submodules: ${{ inputs.submodules }}
 
       - name: Setup uv
-        uses: climate-resource/github-actions/setup-uv@v1.4.2
+        uses: climate-resource/github-actions/setup-uv@v1.4.3
         with:
           python-version: ${{ inputs.python-version }}
 
       - name: Bump version
         id: bump
-        uses: climate-resource/github-actions/bump-version@v1.4.2
+        uses: climate-resource/github-actions/bump-version@v1.4.3
         with:
           bump-rule: ${{ inputs.bump-rule }}
           pre-release-bump: ${{ inputs.pre-release-bump }}
@@ -189,7 +189,7 @@ jobs:
 
       - name: Create GitHub release
         if: inputs.create-release && steps.bump.outputs.is-prerelease != 'true'
-        uses: climate-resource/github-actions/draft-release@v1.4.2
+        uses: climate-resource/github-actions/draft-release@v1.4.3
         with:
           token: ${{ secrets.token || github.token }}
           tag: ${{ steps.bump.outputs.tag }}
