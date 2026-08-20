@@ -23,14 +23,24 @@ name: Bump
 on:
   workflow_call:
     inputs:
+      project-type:
+        description: >
+          Kind of project to bump: 'uv' (Python) or 'yarn' (Node). See the bump-version
+          action for how bump-rule/pre-release-base/pre-release-bump differ per type.
+        required: false
+        type: string
+        default: "uv"
       bump-rule:
-        description: | 
-          Whitespace-separated list of segments passed to uv version --bump. 
-          Each segment becomes a separate --bump. 
-          
-          Examples: "patch",  "minor", "major", "stable", "minor alpha", "patch rc". 
-          
+        description: |
+          For project-type 'uv': whitespace-separated list of segments passed to
+          uv version --bump. Each segment becomes a separate --bump.
+
+          Examples: "patch",  "minor", "major", "stable", "minor alpha", "patch rc".
+
           From a stable version, prerelease segments (alpha, beta, rc, dev) must be combined with a release segment.
+
+          For project-type 'yarn': passed through verbatim as arguments to
+          `npm version <bump-rule words...>`, e.g. "patch" or "preminor --preid alpha".
         required: true
         type: string
       pre-release-base:
@@ -60,7 +70,10 @@ on:
         type: boolean
         default: true
       workspace-packages:
-        description: "Newline-separated uv workspace packages to mirror the version onto."
+        description: >
+          Newline-separated workspace packages to mirror the version onto: uv package
+          names for project-type 'uv', or paths relative to the repo root for
+          project-type 'yarn'.
         required: false
         type: string
         default: ""
@@ -75,7 +88,12 @@ on:
         type: string
         default: ""
       python-version:
-        description: "Python version to install via setup-uv."
+        description: "Python version to install via setup-uv. Also used to run towncrier (via uvx) for project-type 'yarn'."
+        required: false
+        type: string
+        default: ""
+      node-version:
+        description: "Node version to install via actions/setup-node. Only used for project-type 'yarn'."
         required: false
         type: string
         default: ""
@@ -167,10 +185,22 @@ jobs:
         with:
           python-version: ${{ inputs.python-version }}
 
+      - name: Setup Node
+        if: inputs.project-type == 'yarn'
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: Enable corepack
+        if: inputs.project-type == 'yarn'
+        shell: bash
+        run: corepack enable
+
       - name: Bump version
         id: bump
         uses: climate-resource/github-actions/bump-version@v1.4.3
         with:
+          project-type: ${{ inputs.project-type }}
           bump-rule: ${{ inputs.bump-rule }}
           pre-release-bump: ${{ inputs.pre-release-bump }}
           pre-release-base: ${{ inputs.pre-release-base }}
