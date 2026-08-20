@@ -5,7 +5,6 @@ classification and input parsing — rather than the subprocess plumbing.
 """
 
 import pytest
-
 from conftest import bump
 
 
