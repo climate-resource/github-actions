@@ -25,8 +25,11 @@ on:
     inputs:
       project-type:
         description: >
-          Kind of project to bump: 'uv' (Python) or 'yarn' (Node). See the bump-version
-          action for how bump-rule/pre-release-base/pre-release-bump differ per type.
+          Kind of project to bump, named after the package manager that owns the
+          lockfile: 'uv' (Python), or 'yarn' / 'npm' / 'pnpm' (Node). The Node types
+          behave identically apart from which lockfile is refreshed. See the
+          bump-version action for how bump-rule/pre-release-base/pre-release-bump
+          differ per type.
         required: false
         type: string
         default: "uv"
@@ -39,7 +42,7 @@ on:
 
           From a stable version, prerelease segments (alpha, beta, rc, dev) must be combined with a release segment.
 
-          For project-type 'yarn': passed through verbatim as arguments to
+          For the Node project types: passed through verbatim as arguments to
           `npm version <bump-rule words...>`, e.g. "patch" or "preminor --preid alpha".
         required: true
         type: string
@@ -72,8 +75,8 @@ on:
       workspace-packages:
         description: >
           Newline-separated workspace packages to mirror the version onto: uv package
-          names for project-type 'uv', or paths relative to the repo root for
-          project-type 'yarn'.
+          names for project-type 'uv', or paths relative to the repo root for the
+          Node project types.
         required: false
         type: string
         default: ""
@@ -88,12 +91,12 @@ on:
         type: string
         default: ""
       python-version:
-        description: "Python version to install via setup-uv. Also used to run towncrier (via uvx) for project-type 'yarn'."
+        description: "Python version to install via setup-uv. Also used to run towncrier (via uvx) for the Node project types."
         required: false
         type: string
         default: ""
       node-version:
-        description: "Node version to install via actions/setup-node. Only used for project-type 'yarn'."
+        description: "Node version to install via actions/setup-node. Only used for the Node project types."
         required: false
         type: string
         default: ""
@@ -186,13 +189,15 @@ jobs:
           python-version: ${{ inputs.python-version }}
 
       - name: Setup Node
-        if: inputs.project-type == 'yarn'
+        if: contains(fromJSON('["yarn", "npm", "pnpm"]'), inputs.project-type)
         uses: actions/setup-node@v7.0.0
         with:
           node-version: ${{ inputs.node-version }}
 
+      # corepack provisions yarn and pnpm from the project's packageManager
+      # field. npm ships with Node, so it needs nothing here.
       - name: Enable corepack
-        if: inputs.project-type == 'yarn'
+        if: contains(fromJSON('["yarn", "pnpm"]'), inputs.project-type)
         shell: bash
         run: corepack enable
 

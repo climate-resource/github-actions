@@ -18,6 +18,13 @@ def yarn() -> bump.YarnBackend:
     return bump.YarnBackend()
 
 
+# Every Node project type shares its read/bump/mirror behaviour, so the shared
+# cases run against all of them.
+@pytest.fixture(params=["yarn", "npm", "pnpm"])
+def node(request) -> bump.NodeBackend:
+    return bump.BACKENDS[request.param]()
+
+
 class TestUvBumpCommands:
     def test_single_segment(self, uv):
         assert uv.bump_command(["patch"]) == [
@@ -50,32 +57,56 @@ class TestUvBumpCommands:
         ]
 
 
-class TestYarnBumpCommands:
-    def test_segments_pass_through_verbatim(self, yarn):
-        assert yarn.bump_command(["preminor", "--preid", "alpha"]) == [
+class TestNodeBumpCommands:
+    """Shared across yarn, npm and pnpm — all bump via the npm CLI."""
+
+    def test_segments_pass_through_verbatim(self, node):
+        assert node.bump_command(["preminor", "--preid", "alpha"]) == [
             "npm", "version", "preminor", "--preid", "alpha", "--no-git-tag-version",
         ]
 
-    def test_prerelease_concatenates_base_and_bump_words(self, yarn):
-        assert yarn.prerelease_command("prepatch", "--preid dev") == [
+    def test_prerelease_concatenates_base_and_bump_words(self, node):
+        assert node.prerelease_command("prepatch", "--preid dev") == [
             "npm", "version", "prepatch", "--preid", "dev", "--no-git-tag-version",
         ]
 
-    def test_prerelease_base_none_is_skipped(self, yarn):
-        assert yarn.prerelease_command("none", "prerelease --preid rc") == [
+    def test_prerelease_base_none_is_skipped(self, node):
+        assert node.prerelease_command("none", "prerelease --preid rc") == [
             "npm", "version", "prerelease", "--preid", "rc", "--no-git-tag-version",
         ]
 
-    def test_workspace_targets_package_directory(self, yarn):
-        assert yarn.workspace_command("apps/portal", "1.2.3") == [
+    def test_workspace_targets_package_directory(self, node):
+        assert node.workspace_command("apps/portal", "1.2.3") == [
             "npm", "version", "--no-git-tag-version",
             "--prefix", "apps/portal", "1.2.3",
         ]
 
-    def test_changelog_fetches_towncrier_on_the_fly(self, yarn):
-        assert yarn.changelog_command("1.2.3") == [
+    def test_changelog_fetches_towncrier_on_the_fly(self, node):
+        assert node.changelog_command("1.2.3") == [
             "uvx", "towncrier", "build", "--yes", "--version", "v1.2.3",
         ]
+
+
+class TestNodeLockCommands:
+    """The lockfile is the only thing that differs between Node backends."""
+
+    @pytest.mark.parametrize(
+        ("project_type", "expected"),
+        [
+            ("yarn", ["yarn", "install", "--mode=update-lockfile"]),
+            ("npm", ["npm", "install", "--package-lock-only"]),
+            ("pnpm", ["pnpm", "install", "--lockfile-only"]),
+        ],
+    )
+    def test_each_backend_refreshes_its_own_lockfile(self, project_type, expected):
+        assert bump.BACKENDS[project_type]().lock_command() == expected
+
+    def test_lock_command_is_a_fresh_list(self, node):
+        # The command is stored as a class-level tuple; callers must not be able
+        # to mutate it for every later invocation.
+        command = node.lock_command()
+        command.append("--frozen")
+        assert node.lock_command() != command
 
 
 class TestUvPrereleaseDetection:
@@ -101,17 +132,17 @@ class TestUvPrereleaseDetection:
             uv.is_prerelease("not-a-version")
 
 
-class TestYarnPrereleaseDetection:
+class TestNodePrereleaseDetection:
     @pytest.mark.parametrize("version", ["1.2.3-alpha.0", "1.2.3-rc.1", "1.2.3-dev.0"])
-    def test_prerelease_versions(self, yarn, version):
-        assert yarn.is_prerelease(version) is True
+    def test_prerelease_versions(self, node, version):
+        assert node.is_prerelease(version) is True
 
     @pytest.mark.parametrize("version", ["1.2.3", "0.1.0"])
-    def test_stable_versions(self, yarn, version):
-        assert yarn.is_prerelease(version) is False
+    def test_stable_versions(self, node, version):
+        assert node.is_prerelease(version) is False
 
-    def test_hyphen_in_build_metadata_is_not_a_prerelease(self, yarn):
-        assert yarn.is_prerelease("1.2.3+build-5") is False
+    def test_hyphen_in_build_metadata_is_not_a_prerelease(self, node):
+        assert node.is_prerelease("1.2.3+build-5") is False
 
 
 class TestPrereleaseLabel:
@@ -132,17 +163,17 @@ class TestPrereleaseLabel:
             ("--preid alpha", "2.0.0-alpha.12", "alpha"),
         ],
     )
-    def test_yarn_reads_the_identifier_off_the_version(
-        self, yarn, requested, version, expected
+    def test_node_reads_the_identifier_off_the_version(
+        self, node, requested, version, expected
     ):
         # Using the raw input would give a scope like `bump(--preid dev)`.
-        assert yarn.prerelease_label(requested, version) == expected
+        assert node.prerelease_label(requested, version) == expected
 
-    def test_yarn_falls_back_when_no_preid_was_given(self, yarn):
-        assert yarn.prerelease_label("prerelease", "1.2.4-0") == "prerelease"
+    def test_node_falls_back_when_no_preid_was_given(self, node):
+        assert node.prerelease_label("prerelease", "1.2.4-0") == "prerelease"
 
-    def test_yarn_ignores_build_metadata(self, yarn):
-        assert yarn.prerelease_label("--preid dev", "1.2.5-dev.0+build-7") == "dev"
+    def test_node_ignores_build_metadata(self, node):
+        assert node.prerelease_label("--preid dev", "1.2.5-dev.0+build-7") == "dev"
 
 
 class TestConfig:
@@ -174,17 +205,30 @@ class TestConfig:
         config = bump.Config.from_env({"BUMP_RULE": " minor  alpha "})
         assert config.bump_segments == ["minor", "alpha"]
 
-    def test_backend_selected_by_project_type(self):
-        uv_config = bump.Config.from_env({"BUMP_RULE": "patch"})
-        yarn_config = bump.Config.from_env(
-            {"BUMP_RULE": "patch", "PROJECT_TYPE": "yarn"}
+    @pytest.mark.parametrize(
+        ("project_type", "expected"),
+        [
+            ("uv", bump.UvBackend),
+            ("yarn", bump.YarnBackend),
+            ("npm", bump.NpmBackend),
+            ("pnpm", bump.PnpmBackend),
+        ],
+    )
+    def test_backend_selected_by_project_type(self, project_type, expected):
+        config = bump.Config.from_env(
+            {"BUMP_RULE": "patch", "PROJECT_TYPE": project_type}
         )
-        assert isinstance(uv_config.backend(), bump.UvBackend)
-        assert isinstance(yarn_config.backend(), bump.YarnBackend)
+        assert isinstance(config.backend(), expected)
+
+    def test_backend_name_matches_its_project_type(self):
+        for project_type, backend in bump.BACKENDS.items():
+            assert backend.name == project_type
 
     def test_unknown_project_type_is_rejected(self):
         config = bump.Config.from_env({"BUMP_RULE": "patch", "PROJECT_TYPE": "poetry"})
-        with pytest.raises(bump.BumpError, match="project-type must be one of"):
+        with pytest.raises(
+            bump.BumpError, match="project-type must be one of npm, pnpm, uv, yarn"
+        ):
             config.backend()
 
     def test_empty_bump_rule_is_rejected(self):

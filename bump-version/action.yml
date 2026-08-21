@@ -1,15 +1,19 @@
 name: "Bump version"
 description: >
-  Bump a Python (uv) or Node/yarn project's version,
+  Bump a Python (uv) or Node (yarn/npm/pnpm) project's version,
   update the CHANGELOG via towncrier, commit, tag, push,
   and optionally land a second commit bumping main onto a pre-release version.
 
 inputs:
   project-type:
     description: >
-      Kind of project to bump: 'uv' (Python, pyproject.toml via `uv version`) or
-      'yarn' (Node, package.json via `npm version` — used purely as a version-bumping
-      CLI, not as the package manager).
+      Kind of project to bump, named after the package manager that owns the lockfile:
+
+      'uv' — Python, version in pyproject.toml, bumped with `uv version`.
+
+      'yarn', 'npm', 'pnpm' — Node, version in package.json, bumped with `npm version`
+      (used purely as a version-bumping CLI, never as the package manager). The three
+      differ only in which lockfile the `lock` input refreshes.
     required: false
     default: "uv"
   bump-rule:
@@ -22,7 +26,7 @@ inputs:
       a release component (patch, minor, major, stable) alongside any prerelease
       segment (alpha, beta, rc, dev) when the current version is a stable release.
 
-      For project-type 'yarn', the value is passed through verbatim as arguments to
+      For the Node project types, the value is passed through verbatim as arguments to
       `npm version <bump-rule words...> --no-git-tag-version`, e.g. `patch`,
       `preminor --preid alpha`, or `prerelease --preid rc`. The caller is responsible
       for passing a combination that is valid for the current version; invalid
@@ -35,7 +39,7 @@ inputs:
 
       For project-type 'uv': one of dev, alpha, beta, rc, none.
 
-      For project-type 'yarn': verbatim `npm version` arguments (e.g. `--preid dev`),
+      For the Node project types: verbatim `npm version` arguments (e.g. `--preid dev`),
       or 'none'.
 
       Use 'none' to skip the second commit.
@@ -47,7 +51,7 @@ inputs:
 
       For project-type 'uv': a bump rule (patch, minor, major, ...), defaults to 'patch'.
 
-      For project-type 'yarn': a verbatim `npm version` strategy word (e.g. `prepatch`),
+      For the Node project types: a verbatim `npm version` strategy word (e.g. `prepatch`),
       combined with pre-release-bump's arguments in the same `npm version` call.
 
       Use 'none' to skip the base and only apply pre-release-bump.
@@ -68,15 +72,15 @@ inputs:
 
       For project-type 'uv': uv workspace package names.
 
-      For project-type 'yarn': paths (relative to the repo root) to the workspace
+      For the Node project types: paths (relative to the repo root) to the workspace
       packages' directories, e.g. `apps/analysis-portal`.
     required: false
     default: ""
   lock:
     description: >
-      If 'true', refresh the lockfile after each version change
-      (`uv lock` for project-type 'uv', `yarn install --mode=update-lockfile` for
-      project-type 'yarn').
+      If 'true', refresh the lockfile after each version change, using the command
+      for the project type: `uv lock`, `yarn install --mode=update-lockfile`,
+      `npm install --package-lock-only`, or `pnpm install --lockfile-only`.
     required: false
     default: "true"
   pre-commit-command:

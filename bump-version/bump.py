@@ -180,14 +180,17 @@ class UvBackend:
         return requested
 
 
-class YarnBackend:
+class NodeBackend:
     """Node projects whose version lives in `package.json`.
 
-    `npm version` is used purely as a version-bumping CLI; yarn stays the
-    package manager.
+    Every Node project type reads and bumps the same way: `npm version` ships
+    with Node and is used purely as a version-bumping CLI, never as the package
+    manager. The package manager only owns the lockfile, so subclasses supply
+    nothing but a name and a `lock` command.
     """
 
-    name = "yarn"
+    name: str
+    lock: tuple[str, ...]
 
     def read_version(self) -> str:
         return run(["node", "-p", "require('./package.json').version"], capture=True)
@@ -206,7 +209,7 @@ class YarnBackend:
         return ["npm", "version", "--no-git-tag-version", "--prefix", package, version]
 
     def lock_command(self) -> list[str]:
-        return ["yarn", "install", "--mode=update-lockfile"]
+        return list(self.lock)
 
     def changelog_command(self, version: str) -> list[str]:
         # No project virtualenv to run towncrier from, so fetch it on the fly.
@@ -230,7 +233,28 @@ class YarnBackend:
         return "prerelease"
 
 
-BACKENDS: dict[str, type[Backend]] = {"uv": UvBackend, "yarn": YarnBackend}
+class YarnBackend(NodeBackend):
+    name = "yarn"
+    # Yarn Berry; `--mode=update-lockfile` skips fetching packages.
+    lock = ("yarn", "install", "--mode=update-lockfile")
+
+
+class NpmBackend(NodeBackend):
+    name = "npm"
+    lock = ("npm", "install", "--package-lock-only")
+
+
+class PnpmBackend(NodeBackend):
+    name = "pnpm"
+    lock = ("pnpm", "install", "--lockfile-only")
+
+
+BACKENDS: dict[str, type[Backend]] = {
+    "uv": UvBackend,
+    "yarn": YarnBackend,
+    "npm": NpmBackend,
+    "pnpm": PnpmBackend,
+}
 
 
 # --------------------------------------------------------------------------

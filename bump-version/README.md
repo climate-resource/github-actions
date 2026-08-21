@@ -5,26 +5,31 @@ towncrier, commits, tags, pushes, and (by default) lands a follow-up commit that
 moves the branch onto a pre-release version so future commits don't share the
 tagged version.
 
-Two project types are supported, selected with `project-type`:
+`project-type` selects the backend, and is named after the package manager that
+owns the lockfile:
 
-| `project-type` | Version lives in | Bumped with |
-| --- | --- | --- |
-| `uv` (default) | `pyproject.toml` | `uv version --bump` |
-| `yarn` | `package.json` | `npm version` |
+| `project-type` | Version lives in | Bumped with | `lock: true` runs |
+| --- | --- | --- | --- |
+| `uv` (default) | `pyproject.toml` | `uv version --bump` | `uv lock` |
+| `yarn` | `package.json` | `npm version` | `yarn install --mode=update-lockfile` |
+| `npm` | `package.json` | `npm version` | `npm install --package-lock-only` |
+| `pnpm` | `package.json` | `npm version` | `pnpm install --lockfile-only` |
 
-For `yarn`, `npm version` is used purely as a version-bumping CLI — yarn remains
-the package manager and owns the lockfile.
+The three Node types behave identically apart from that last column. `npm
+version` is used purely as a version-bumping CLI — it ships with Node, and the
+package manager you named stays in charge of the lockfile.
 
 The logic lives in [`bump.py`](bump.py), which `action.yml` invokes with
 `uv run --script`. Its unit tests are in [`../tests/test_bump.py`](../tests/test_bump.py).
 
 ## Prerequisites
 
-- **`uv` is on PATH for both project types** (use [`setup-uv`](../setup-uv)
+- **`uv` is on PATH for all project types** (use [`setup-uv`](../setup-uv)
   before this action). It runs the script itself, so it is required even for
-  `project-type: yarn`, where it also provides towncrier via `uvx`.
-- For `project-type: yarn`, `node`, `npm` and `yarn` must be on PATH (use
-  `actions/setup-node` and `corepack enable`).
+  the Node project types, where it also provides towncrier via `uvx`.
+- For the Node project types, `node` and `npm` must be on PATH, plus `yarn` or
+  `pnpm` if `lock: true` (use `actions/setup-node`, and `corepack enable` for
+  yarn/pnpm).
 - The checked-out repo has full history (`fetch-depth: 0`).
   The default `GITHUB_TOKEN` is sufficient to push the bump commit and tag.
   Check out with a PAT only when branch protection blocks the `github-actions` bot,
@@ -34,14 +39,14 @@ The logic lives in [`bump.py`](bump.py), which `action.yml` invokes with
 
 | Input | Default | Description |
 | --- | --- | --- |
-| `project-type` | `uv` | `uv` for a Python project, `yarn` for a Node project. |
-| `bump-rule` | _required_ | Whitespace-separated arguments describing the bump. For `uv`, each segment becomes a separate `--bump`: `patch`, `minor`, `major`, `stable`, `minor alpha`, `patch rc`. From a stable version, prerelease segments (`alpha`, `beta`, `rc`, `dev`) must be combined with a release segment. For `yarn`, passed verbatim to `npm version`: `patch`, `preminor --preid alpha`, `prerelease --preid rc`. |
-| `pre-release-bump` | `dev` | Pre-release segment for the second commit. For `uv`: `dev`, `alpha`, `beta`, `rc`. For `yarn`: verbatim `npm version` arguments, e.g. `--preid dev`. Use `none` to skip the second commit. |
-| `pre-release-base` | `patch` | Base bump applied before the pre-release segment in the second commit. For `uv`: a bump rule (`patch`, `minor`, `major`, …). For `yarn`: an `npm version` strategy word, e.g. `prepatch`. Use `none` to add the pre-release marker without bumping the base. |
+| `project-type` | `uv` | `uv` for a Python project; `yarn`, `npm` or `pnpm` for a Node project. See the table above. |
+| `bump-rule` | _required_ | Whitespace-separated arguments describing the bump. For `uv`, each segment becomes a separate `--bump`: `patch`, `minor`, `major`, `stable`, `minor alpha`, `patch rc`. From a stable version, prerelease segments (`alpha`, `beta`, `rc`, `dev`) must be combined with a release segment. For the Node types, passed verbatim to `npm version`: `patch`, `preminor --preid alpha`, `prerelease --preid rc`. |
+| `pre-release-bump` | `dev` | Pre-release segment for the second commit. For `uv`: `dev`, `alpha`, `beta`, `rc`. For the Node types: verbatim `npm version` arguments, e.g. `--preid dev`. Use `none` to skip the second commit. |
+| `pre-release-base` | `patch` | Base bump applied before the pre-release segment in the second commit. For `uv`: a bump rule (`patch`, `minor`, `major`, …). For the Node types: an `npm version` strategy word, e.g. `prepatch`. Use `none` to add the pre-release marker without bumping the base. |
 | `update-changelog` | `true` | Build the CHANGELOG with towncrier for the new version. |
 | `commit-email` | `ci-runner@climate-resource.invalid` | Author email for both commits. |
-| `workspace-packages` | _empty_ | Newline-separated workspace packages to mirror the version onto. For `uv`: package names. For `yarn`: directory paths relative to the repo root, e.g. `apps/analysis-portal`. |
-| `lock` | `true` | Refresh the lockfile after each version change (`uv lock`, or `yarn install --mode=update-lockfile`). |
+| `workspace-packages` | _empty_ | Newline-separated workspace packages to mirror the version onto. For `uv`: package names. For the Node types: directory paths relative to the repo root, e.g. `apps/analysis-portal`. |
+| `lock` | `true` | Refresh the lockfile after each version change, using the command for the project type (see the table above). |
 | `pre-commit-command` | _empty_ | Shell command run after the changelog build and before each bump commit. Use it to regenerate version-derived files (e.g. an OpenAPI schema) so they stay in sync in the tagged commit. The command must succeed; a non-zero exit aborts the bump. |
 | `pre-commit-skip` | `false` | Pass `-n` to `git commit` to bypass pre-commit hooks. |
 | `push` | `true` | Push the bump commit, tag, and pre-release commit. |
@@ -81,12 +86,12 @@ already a pre-release. Otherwise it applies `pre-release-base` then
 creates a `bump(<label>): ...` commit which is pushed.
 
 The `<label>` scope is the pre-release identifier, not the raw input. For `uv`
-that is the `pre-release-bump` word itself (`bump(dev)`); for `yarn` it is read
+that is the `pre-release-bump` word itself (`bump(dev)`); for Node it is read
 back off the version `npm version` produced, so `--preid dev` landing on
 `1.2.5-dev.0` gives `bump(dev)` rather than `bump(--preid dev)`.
 
 Pre-release detection is version-scheme aware: PEP 440 for `uv` (via
-`packaging`), semver for `yarn`.
+`packaging`), semver for the Node types.
 
 ## Example
 
