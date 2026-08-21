@@ -17,6 +17,25 @@ You *may* edit previous changelogs to fix problems like typo corrections or such
 
 <!-- towncrier release notes start -->
 
+## github-actions v1.5.0 (2026-08-21)
+
+### Features
+
+- Added support for `yarn`, `npm` and `pnpm` projects for the bump action using the new `project-type` input parameter. All three Node types read and bump `package.json` through the `npm version` CLI and differ only in the lockfile `lock: true` refreshes: `yarn install --mode=update-lockfile`, `npm install --package-lock-only`, or `pnpm install --lockfile-only`. ([#27](https://github.com/climate-resource/github-actions/pull/27))
+
+### Improvements
+
+- Moved `bump-version`'s logic out of `action.yml` and into a self-contained `bump-version/bump.py`, run via `uv run --script`. ([#27](https://github.com/climate-resource/github-actions/pull/27))
+
+### Bug Fixes
+
+- Fixed pre-release detection in `bump-version`, which matched a bare `a`, `b`, `rc` or `dev` anywhere in the version string. A version carrying a local segment such as `1.2.3+abc` was misread as a pre-release, silently skipping both the follow-up dev bump and the draft GitHub release. Detection is now version-scheme aware: PEP 440 for `project-type: uv`, semver for `project-type: yarn`. ([#27](https://github.com/climate-resource/github-actions/pull/27))
+
+### Trivial/Internal Changes
+
+- [#26](https://github.com/climate-resource/github-actions/pull/26)
+
+
 ## github-actions v1.4.3 (2026-06-30)
 
 No significant changes.
