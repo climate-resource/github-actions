@@ -3,12 +3,20 @@ name = "github-actions"
 version = "1.4.3"
 description = "Reusable GitHub Actions for Climate Resource"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 
 [dependency-groups]
 dev = [
     "towncrier>=23.6.0",
+    "packaging>=24.0",
+    "pytest>=8.0.0",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# tests/conftest.py loads bump-version/bump.py by path; importing it as
+# `from conftest import bump` needs the tests directory on sys.path.
+pythonpath = ["tests"]
 
 [tool.towncrier]
 filename = "CHANGELOG.md"
