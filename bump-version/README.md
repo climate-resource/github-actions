@@ -104,24 +104,18 @@ With `dynamic-versioning: true` the version is not stored anywhere in the repo,
 so the base is the highest `v*` tag reachable from `HEAD`, with the leading `v` stripped.
 A repo with no such tag starts from `0.0.0`.
 
-Tags are ranked by PEP 440, not by `git describe` or `git tag --sort=v:refname`.
-Both of those get it wrong here: they rank `v1.6.0rc1` above `v1.6.0`,
-and `git describe` returns whichever tag sits closest rather than the highest,
-so a repo carrying moving aliases like `v1` alongside `v1.5.1` would bump from the wrong base.
+Tags are ranked by PEP 440.
 A tag that is not a valid version, such as `vendor-3`, is ignored rather than treated as one.
 
-`bump-rule` means exactly what it means in static mode,
-because the new version is computed by running `uv version --bump` against a scratch project
-seeded with the base version.
+`bump-rule` means exactly what it means in static mode (`uv version --bump` is still used to calculate the tag).
 So `patch`, `minor`, `major`, `stable` and the pre-release segments (`alpha`, `beta`, `rc`, `dev`)
 all behave as they usually do, and an unsupported combination fails with uv's own message.
 
 What changes:
 
-- `pyproject.toml` is never rewritten and the lockfile is never refreshed,
+- `pyproject.toml` or the lockfile is not edited as it isn't needed,
   so `workspace-packages` and `lock` do not apply.
-- Phase 2 never runs.
-  There is no post-tag commit, `pre-release-bump` and `pre-release-base` are ignored,
+- There is no post-tag commit, `pre-release-bump` and `pre-release-base` are ignored,
   and `dev-version` is empty.
 - The commit is made only if something is left to commit,
   which in practice means the changelog build or `pre-commit-command` changed a tracked file.
@@ -136,6 +130,24 @@ What changes:
     dynamic-versioning: true
     bump-rule: ${{ inputs.bump_rule }}
 ```
+
+### Gotchas
+
+The tag is the only record of the version, so anything that muddies the tags muddies the release.
+
+- Never leave two release tags on one commit.
+  hatch-vcs picks the lower one, so a commit carrying `v1.3.0` and `v1.4.0` builds `1.3.0`
+  even though the action just tagged `v1.4.0`.
+  Dynamic mode makes this easy to hit, because it tags `HEAD` without landing a commit,
+  so two releases with no commit between them put both tags on the same commit.
+  Moving aliases such as `v1` or `v1.3` cause the same mismatch.
+- Every package in the repo shares one version, because they all read the same tag.
+  A release moves them together and no single member can be released on its own.
+- Build a workspace with `uv build --all-packages`.
+  Plain `uv build` against a virtual workspace root produces `unknown-0.0.0` artifacts,
+  which `release-files: dist/*` will happily attach to the release.
+- A member in a subdirectory needs `raw-options = { search_parent_directories = true }`
+  under `[tool.hatch.version]`, or hatch-vcs fails to find the repository at all.
 
 ## Example
 
