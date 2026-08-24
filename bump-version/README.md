@@ -8,12 +8,12 @@ tagged version.
 `project-type` selects the backend, and is named after the package manager that
 owns the lockfile:
 
-| `project-type` | Version lives in | Bumped with | `lock: true` runs |
-| --- | --- | --- | --- |
-| `uv` (default) | `pyproject.toml` | `uv version --bump` | `uv lock` |
-| `yarn` | `package.json` | `npm version` | `yarn install --mode=update-lockfile` |
-| `npm` | `package.json` | `npm version` | `npm install --package-lock-only` |
-| `pnpm` | `package.json` | `npm version` | `pnpm install --lockfile-only` |
+| `project-type` | Version lives in | Bumped with         | `lock: true` runs                     |
+| -------------- | ---------------- | ------------------- | ------------------------------------- |
+| `uv` (default) | `pyproject.toml` | `uv version --bump` | `uv lock`                             |
+| `yarn`         | `package.json`   | `npm version`       | `yarn install --mode=update-lockfile` |
+| `npm`          | `package.json`   | `npm version`       | `npm install --package-lock-only`     |
+| `pnpm`         | `package.json`   | `npm version`       | `pnpm install --lockfile-only`        |
 
 The three Node types behave identically apart from that last column. `npm
 version` is used purely as a version-bumping CLI — it ships with Node, and the
@@ -136,16 +136,9 @@ What changes:
 The tag is the only record of the version, so anything that muddies the tags muddies the release.
 
 - Releasing twice from one commit is refused, because hatch-vcs would read the lower tag.
-  A commit carrying `v1.3.0` and `v1.4.0` builds `1.3.0` whichever tag was added last,
-  so the action fails rather than tagging on top of an existing release.
-  Dynamic mode makes this easy to reach, because it tags `HEAD` without landing a commit.
-  Moving aliases such as `v1` or `v1.3` trip the same guard, so a repo that publishes them
-  cannot use `dynamic-versioning`.
+  Moving aliases such as `v1` or `v1.3` trip the same guard, so a repo that publishes them cannot use `dynamic-versioning`.
 - Every package in the repo shares one version, because they all read the same tag.
   A release moves them together and no single member can be released on its own.
-- Build a workspace with `uv build --all-packages`.
-  Plain `uv build` against a virtual workspace root produces `unknown-0.0.0` artifacts,
-  which `release-files: dist/*` will happily attach to the release.
 - A member in a subdirectory needs `raw-options = { search_parent_directories = true }`
   under `[tool.hatch.version]`, or hatch-vcs fails to find the repository at all.
 
