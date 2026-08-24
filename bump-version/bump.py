@@ -16,13 +16,10 @@ The work happens in two phases:
 2. `land_prerelease` optionally lands a second commit moving the branch onto a
    pre-release version, so later commits do not share the tagged version.
 
-Everything that differs between project types lives behind `Backend`, so the two
-phases never branch on the project type.
+Everything that differs between project types lives behind `Backend`, 
+so the two phases never branch on the project type.
 
-Projects whose version is derived from git tags (e.g. hatch-vcs) use the same two
-phases with `DynamicBackend`. Dynamic versioning is a mode rather than a project
-type, so the phases do consult it directly: phase 1 skips the version commit when
-nothing else changed, and phase 2 never runs.
+Projects whose version is derived from git tags (e.g. hatch-vcs) skip phase 2.
 """
 
 import os
@@ -45,8 +42,7 @@ NONE = "none"
 # Base version for a dynamically versioned project with no release tag yet.
 FIRST_VERSION = "0.0.0"
 
-# Scratch project standing in for the manifest a dynamically versioned project
-# does not have, so uv has something to bump.
+# Scratch project that uv can bump when using dynamic versioning
 SCRATCH_PROJECT = """\
 [project]
 name = "bump-version-scratch"
@@ -282,8 +278,8 @@ class PnpmBackend(NodeBackend):
 def latest_tagged_version(tags: Sequence[str]) -> str | None:
     """Return the highest release among `v`-prefixed `tags`, or None if there is none.
 
-    Ordering is PEP 440 rather than git's `v:refname`, which ranks a pre-release
-    above the release it precedes and does not skip tags that are not versions.
+    Ordering is PEP 440 rather than git's `v:refname`, 
+    which ranks a pre-release above the release it precedes and does not skip tags that are not versions.
     """
     versions = []
     for tag in tags:
@@ -299,10 +295,9 @@ def latest_tagged_version(tags: Sequence[str]) -> str | None:
 class DynamicBackend(UvBackend):
     """Python projects whose version is derived from git tags (e.g. hatch-vcs).
 
-    No file in the repo carries the version, so the base comes from the latest
-    reachable tag and the bump is applied to a scratch project. Borrowing uv
-    rather than reimplementing PEP 440 keeps the bump rules identical to the
-    static mode's.
+    No file in the repo carries the version, 
+    so the base comes from the latest reachable tag and the bump is applied to a scratch project. 
+    Borrowing uv rather than reimplementing PEP 440 keeps the bump rules identical to the static mode's.
     """
 
     def read_version(self) -> str:

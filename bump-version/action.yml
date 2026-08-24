@@ -25,9 +25,8 @@ inputs:
       for projects whose version is derived from git tags (e.g. hatch-vcs).
       With no such tag the base is 0.0.0.
 
-      No manifest is rewritten and no lockfile is refreshed, so `workspace-packages` and `lock`
-      do not apply, and neither does the second commit, so `pre-release-bump` and `pre-release-base`
-      are ignored and the `dev-version` output stays empty.
+      No manifest is rewritten and no lockfile is refreshed, so `workspace-packages` and `lock` do not apply.
+      The `pre-release-bump` and `pre-release-base` flags are ignored as they do not apply.
       Only project-type 'uv' is supported.
 
       The checkout needs the tags, so use `fetch-depth: 0` when calling this action directly.

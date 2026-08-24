@@ -163,6 +163,8 @@ Nothing is written to `pyproject.toml`, no lockfile is refreshed, and no post-ta
 so `pre-release-bump`, `pre-release-base` and `workspace-packages` are ignored.
 The changelog build and `pre-commit-command` still run, and their changes land in the tagged commit.
 
+
+
 ### Skipping the changelog or the pre-release dev commit
 
 ```yaml

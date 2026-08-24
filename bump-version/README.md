@@ -141,6 +141,7 @@ The tag is the only record of the version, so anything that muddies the tags mud
   A release moves them together and no single member can be released on its own.
 - A member in a subdirectory needs `raw-options = { search_parent_directories = true }`
   under `[tool.hatch.version]`, or hatch-vcs fails to find the repository at all.
+  This configuration is needed for monorepos.
 
 ## Example
 

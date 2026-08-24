@@ -19,8 +19,8 @@
 # which tags without editing any manifest and lands no post-tag commit.
 #
 # A PAT is only needed when branch protection blocks the github-actions bot or
-# when the release is auto-published and downstream workflows must fire. In
-# that case pass it as `secrets: token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}`.
+# when the release is auto-published and downstream workflows must fire. 
+# In that case pass it as `secrets: token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}`.
 
 name: Bump
 on:
@@ -28,11 +28,11 @@ on:
     inputs:
       project-type:
         description: >
-          Kind of project to bump, named after the package manager that owns the
-          lockfile: 'uv' (Python), or 'yarn' / 'npm' / 'pnpm' (Node). The Node types
-          behave identically apart from which lockfile is refreshed. See the
-          bump-version action for how bump-rule/pre-release-base/pre-release-bump
-          differ per type.
+          Kind of project to bump, named after the package manager that owns the lockfile: 
+          'uv' (Python), or 'yarn' / 'npm' / 'pnpm' (Node). 
+          
+          The Node types behave identically apart from which lockfile is refreshed.
+          See the bump-version action for how bump-rule/pre-release-base/pre-release-bump differ per type.
         required: false
         type: string
         default: "uv"
