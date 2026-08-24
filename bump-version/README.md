@@ -19,10 +19,9 @@ The three Node types behave identically apart from that last column. `npm
 version` is used purely as a version-bumping CLI — it ships with Node, and the
 package manager you named stays in charge of the lockfile.
 
-Projects that derive their version from git tags (e.g. hatch-vcs) set
-`dynamic-versioning: true` instead. The tag is then the only thing that carries
-the version, so no manifest is touched. See
-[Dynamic versioning](#dynamic-versioning) below.
+Projects that derive their version from git tags (e.g. hatch-vcs) set `dynamic-versioning: true` instead.
+The tag is then the only thing that carries the version, so no manifest is touched.
+See [Dynamic versioning](#dynamic-versioning) below.
 
 The logic lives in [`bump.py`](bump.py), which `action.yml` invokes with
 `uv run --script`. Its unit tests are in [`../tests/test_bump.py`](../tests/test_bump.py).
@@ -102,24 +101,31 @@ Pre-release detection is version-scheme aware: PEP 440 for `uv` (via
 ## Dynamic versioning
 
 With `dynamic-versioning: true` the version is not stored anywhere in the repo,
-so the base comes from `git describe --tags --abbrev=0 --match 'v*'`, with the
-leading `v` stripped. A repo with no such tag starts from `0.0.0`.
+so the base is the highest `v*` tag reachable from `HEAD`, with the leading `v` stripped.
+A repo with no such tag starts from `0.0.0`.
 
-`bump-rule` means exactly what it means in static mode, because the new version
-is computed by running `uv version --bump` against a scratch project seeded with
-the base version. So `patch`, `minor`, `major`, `stable` and the pre-release
-segments (`alpha`, `beta`, `rc`, `dev`) all behave as they usually do, and an
-unsupported combination fails with uv's own message.
+Tags are ranked by PEP 440, not by `git describe` or `git tag --sort=v:refname`.
+Both of those get it wrong here: they rank `v1.6.0rc1` above `v1.6.0`,
+and `git describe` returns whichever tag sits closest rather than the highest,
+so a repo carrying moving aliases like `v1` alongside `v1.5.1` would bump from the wrong base.
+A tag that is not a valid version, such as `vendor-3`, is ignored rather than treated as one.
+
+`bump-rule` means exactly what it means in static mode,
+because the new version is computed by running `uv version --bump` against a scratch project
+seeded with the base version.
+So `patch`, `minor`, `major`, `stable` and the pre-release segments (`alpha`, `beta`, `rc`, `dev`)
+all behave as they usually do, and an unsupported combination fails with uv's own message.
 
 What changes:
 
-- `pyproject.toml` is never rewritten and the lockfile is never refreshed, so
-  `workspace-packages` and `lock` do not apply.
-- Phase 2 never runs. There is no post-tag commit, `pre-release-bump` and
-  `pre-release-base` are ignored, and `dev-version` is empty.
-- The commit is made only if something is left to commit, which in practice
-  means the changelog build or `pre-commit-command` changed a tracked file. With
-  nothing to commit the tag lands on `HEAD` rather than on an empty commit.
+- `pyproject.toml` is never rewritten and the lockfile is never refreshed,
+  so `workspace-packages` and `lock` do not apply.
+- Phase 2 never runs.
+  There is no post-tag commit, `pre-release-bump` and `pre-release-base` are ignored,
+  and `dev-version` is empty.
+- The commit is made only if something is left to commit,
+  which in practice means the changelog build or `pre-commit-command` changed a tracked file.
+  With nothing to commit the tag lands on `HEAD` rather than on an empty commit.
 
 `update-changelog` and `pre-commit-command` work as they do in static mode.
 

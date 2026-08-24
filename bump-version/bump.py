@@ -16,11 +16,13 @@ The work happens in two phases:
 2. `land_prerelease` optionally lands a second commit moving the branch onto a
    pre-release version, so later commits do not share the tagged version.
 
-Everything that differs between project types lives behind `Backend`; the two
-phases themselves never branch on the project type.
+Everything that differs between project types lives behind `Backend`, so the two
+phases never branch on the project type.
 
-Projects whose version is derived from git tags (e.g. hatch-vcs) use the same
-two phases with `DynamicBackend`, except that phase 2 never runs.
+Projects whose version is derived from git tags (e.g. hatch-vcs) use the same two
+phases with `DynamicBackend`. Dynamic versioning is a mode rather than a project
+type, so the phases do consult it directly: phase 1 skips the version commit when
+nothing else changed, and phase 2 never runs.
 """
 
 import os
@@ -76,18 +78,17 @@ def group(title: str) -> Generator[None]:
         log("::endgroup::")
 
 
-def run(command: Sequence[str], *, capture: bool = False, check: bool = True) -> str:
+def run(command: Sequence[str], *, capture: bool = False) -> str:
     """Run `command`, echoing it first so the log shows what was executed.
 
     With `capture`, stdout is returned instead of being written to the log;
-    stderr always flows straight through so failures stay visible. With
-    `check` off, a non-zero exit is the caller's answer rather than an error.
+    stderr always flows straight through so failures stay visible.
     """
     log(f"+ {shlex.join(command)}")
     try:
         result = subprocess.run(
             command,
-            check=check,
+            check=True,
             text=True,
             stdout=subprocess.PIPE if capture else None,
         )
@@ -278,6 +279,23 @@ class PnpmBackend(NodeBackend):
     lock = ("pnpm", "install", "--lockfile-only")
 
 
+def latest_tagged_version(tags: Sequence[str]) -> str | None:
+    """Return the highest release among `v`-prefixed `tags`, or None if there is none.
+
+    Ordering is PEP 440 rather than git's `v:refname`, which ranks a pre-release
+    above the release it precedes and does not skip tags that are not versions.
+    """
+    versions = []
+    for tag in tags:
+        try:
+            versions.append(Version(tag.removeprefix("v")))
+        except InvalidVersion:
+            log(f"Ignoring tag {tag}, which is not a version")
+    if not versions:
+        return None
+    return str(max(versions))
+
+
 class DynamicBackend(UvBackend):
     """Python projects whose version is derived from git tags (e.g. hatch-vcs).
 
@@ -287,20 +305,21 @@ class DynamicBackend(UvBackend):
     static mode's.
     """
 
-    name = "dynamic"
-
     def read_version(self) -> str:
-        tag = run(
-            ["git", "describe", "--tags", "--abbrev=0", "--match", "v*"],
-            capture=True,
-            check=False,
-        )
-        if not tag:
-            log(f"No v* tag is reachable, so the base version is {FIRST_VERSION}")
+        tags = run(
+            ["git", "tag", "--list", "v*", "--merged", "HEAD"], capture=True
+        ).split()
+        version = latest_tagged_version(tags)
+        if version is None:
+            log(f"No v* release tag is reachable, so the base version is {FIRST_VERSION}")
             return FIRST_VERSION
-        return tag.removeprefix("v")
+        return version
 
-    def bump_command(self, segments: Sequence[str], directory: str = ".") -> list[str]:
+    def scratch_bump_command(self, segments: Sequence[str], directory: str) -> list[str]:
+        """Build the bump command for the scratch project in `directory`.
+
+        Deliberately not `bump_command`, which rewrites the repo's own manifest.
+        """
         command = ["uv", "version", "--frozen", "--short", "--directory", directory]
         for segment in segments:
             command += ["--bump", segment]
@@ -310,7 +329,7 @@ class DynamicBackend(UvBackend):
         with tempfile.TemporaryDirectory() as directory:
             manifest = Path(directory) / "pyproject.toml"
             manifest.write_text(SCRATCH_PROJECT.format(version=base), encoding="utf-8")
-            return run(self.bump_command(segments, directory), capture=True)
+            return run(self.scratch_bump_command(segments, directory), capture=True)
 
 
 BACKENDS: dict[str, type[Backend]] = {
@@ -421,9 +440,7 @@ def run_pre_commit_command(config: Config) -> None:
 
 def has_tracked_changes() -> bool:
     """Return whether `git commit -a` would have anything to commit."""
-    status = run(
-        ["git", "status", "--porcelain", "--untracked-files=no"], capture=True
-    )
+    status = run(["git", "status", "--porcelain", "--untracked-files=no"], capture=True)
     return bool(status)
 
 
@@ -490,7 +507,7 @@ def land_prerelease(config: Config, backend: Backend, release: Release) -> str |
     Returns the new pre-release version, or None when the bump was skipped.
     """
     if config.dynamic_versioning:
-        log("Skipping pre-release bump; the version comes from the tag")
+        log("Skipping pre-release bump because the version comes from the tag")
         return None
     if config.pre_release_bump == NONE:
         log("Skipping pre-release bump (pre-release-bump=none)")
