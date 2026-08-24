@@ -135,12 +135,12 @@ What changes:
 
 The tag is the only record of the version, so anything that muddies the tags muddies the release.
 
-- Never leave two release tags on one commit.
-  hatch-vcs picks the lower one, so a commit carrying `v1.3.0` and `v1.4.0` builds `1.3.0`
-  even though the action just tagged `v1.4.0`.
-  Dynamic mode makes this easy to hit, because it tags `HEAD` without landing a commit,
-  so two releases with no commit between them put both tags on the same commit.
-  Moving aliases such as `v1` or `v1.3` cause the same mismatch.
+- Releasing twice from one commit is refused, because hatch-vcs would read the lower tag.
+  A commit carrying `v1.3.0` and `v1.4.0` builds `1.3.0` whichever tag was added last,
+  so the action fails rather than tagging on top of an existing release.
+  Dynamic mode makes this easy to reach, because it tags `HEAD` without landing a commit.
+  Moving aliases such as `v1` or `v1.3` trip the same guard, so a repo that publishes them
+  cannot use `dynamic-versioning`.
 - Every package in the repo shares one version, because they all read the same tag.
   A release moves them together and no single member can be released on its own.
 - Build a workspace with `uv build --all-packages`.

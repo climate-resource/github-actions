@@ -148,6 +148,52 @@ class TestDynamicReadVersion:
         assert dynamic.read_version() == "1.0.0"
 
 
+class TestGuardUntaggedHead:
+    """Dynamic mode must not stack a second release tag on one commit."""
+
+    def _repo(self, tmp_path, tags):
+        import subprocess
+
+        run = lambda *a: subprocess.run(a, cwd=tmp_path, check=True, capture_output=True)
+        run("git", "init", "-q", ".")
+        run("git", "config", "user.email", "t@example.com")
+        run("git", "config", "user.name", "t")
+        run("git", "commit", "-q", "--allow-empty", "-m", "base")
+        for tag in tags:
+            run("git", "tag", tag)
+        return tmp_path
+
+    def test_an_untagged_head_is_allowed(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(self._repo(tmp_path, []))
+        bump.guard_untagged_head("1.4.0")
+
+    def test_a_release_tag_on_head_is_refused(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(self._repo(tmp_path, ["v1.3.0"]))
+        with pytest.raises(bump.BumpError, match="already tagged v1.3.0"):
+            bump.guard_untagged_head("1.4.0")
+
+    def test_a_moving_alias_on_head_is_refused(self, tmp_path, monkeypatch):
+        # An alias such as v1 is what hatch-vcs would build, not the new tag.
+        monkeypatch.chdir(self._repo(tmp_path, ["v1", "v1.3.0"]))
+        with pytest.raises(bump.BumpError, match="already tagged"):
+            bump.guard_untagged_head("1.4.0")
+
+    def test_a_non_version_tag_on_head_is_allowed(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(self._repo(tmp_path, ["nightly"]))
+        bump.guard_untagged_head("1.4.0")
+
+    def test_a_tag_on_an_earlier_commit_is_allowed(self, tmp_path, monkeypatch):
+        import subprocess
+
+        repo = self._repo(tmp_path, ["v1.3.0"])
+        subprocess.run(
+            ("git", "commit", "-q", "--allow-empty", "-m", "changelog"),
+            cwd=repo, check=True, capture_output=True,
+        )
+        monkeypatch.chdir(repo)
+        bump.guard_untagged_head("1.4.0")
+
+
 class TestDynamicBumpCommands:
     """The bump runs against a scratch project, never the repo's own manifest."""
 

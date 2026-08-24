@@ -444,6 +444,21 @@ def has_tracked_changes() -> bool:
     return bool(status)
 
 
+def guard_untagged_head(new_version: str) -> None:
+    """Refuse to put a second release tag on a commit that already carries one.
+
+    hatch-vcs reads the lower tag, so the artefacts would not match `new_version`.
+    """
+    existing = latest_tagged_version(
+        run(["git", "tag", "--points-at", "HEAD"], capture=True).split()
+    )
+    if existing is not None:
+        raise BumpError(
+            f"HEAD is already tagged v{existing}, so v{new_version} would build "
+            f"{existing}. Release from a later commit."
+        )
+
+
 def commit(config: Config, message: str) -> None:
     command = ["git", "commit"]
     if config.commit_skip_hooks:
@@ -489,6 +504,8 @@ def tag_release(config: Config, backend: Backend) -> Release:
             log("Nothing to commit, so tagging HEAD as it stands")
         else:
             commit(config, f"bump: version {base_version} -> {new_version}")
+        if config.dynamic_versioning:
+            guard_untagged_head(new_version)
         run(["git", "tag", f"v{new_version}"])
         if config.do_push:
             run(["git", "push"])
