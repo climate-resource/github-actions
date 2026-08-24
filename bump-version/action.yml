@@ -4,6 +4,9 @@ description: >
   update the CHANGELOG via towncrier, commit, tag, push,
   and optionally land a second commit bumping main onto a pre-release version.
 
+  Projects that derive their version from git tags (e.g. hatch-vcs) set
+  `dynamic-versioning` and are released by the tag alone.
+
 inputs:
   project-type:
     description: >
@@ -16,6 +19,20 @@ inputs:
       differ only in which lockfile the `lock` input refreshes.
     required: false
     default: "uv"
+  dynamic-versioning:
+    description: >
+      If 'true', take the base version from the latest reachable `v*` tag rather than from a manifest,
+      for projects whose version is derived from git tags (e.g. hatch-vcs).
+      With no such tag the base is 0.0.0.
+
+      No manifest is rewritten and no lockfile is refreshed, so `workspace-packages` and `lock`
+      do not apply, and neither does the second commit, so `pre-release-bump` and `pre-release-base`
+      are ignored and the `dev-version` output stays empty.
+      Only project-type 'uv' is supported.
+
+      The checkout needs the tags, so use `fetch-depth: 0` when calling this action directly.
+    required: false
+    default: "false"
   bump-rule:
     description: >
       Whitespace-separated arguments describing the bump.
@@ -132,6 +149,7 @@ runs:
       shell: bash
       env:
         PROJECT_TYPE: ${{ inputs.project-type }}
+        DYNAMIC_VERSIONING: ${{ inputs.dynamic-versioning }}
         BUMP_RULE: ${{ inputs.bump-rule }}
         PRE_RELEASE_BUMP: ${{ inputs.pre-release-bump }}
         PRE_RELEASE_BASE: ${{ inputs.pre-release-base }}

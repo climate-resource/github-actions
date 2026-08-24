@@ -14,6 +14,11 @@ def uv() -> bump.UvBackend:
 
 
 @pytest.fixture
+def dynamic() -> bump.DynamicBackend:
+    return bump.DynamicBackend()
+
+
+@pytest.fixture
 def yarn() -> bump.YarnBackend:
     return bump.YarnBackend()
 
@@ -55,6 +60,37 @@ class TestUvBumpCommands:
         assert uv.changelog_command("1.2.3") == [
             "uv", "run", "towncrier", "build", "--yes", "--version", "v1.2.3",
         ]
+
+
+class TestDynamicBumpCommands:
+    """The bump runs against a scratch project, never the repo's own manifest."""
+
+    def test_bump_targets_the_scratch_directory(self, dynamic):
+        assert dynamic.bump_command(["minor", "alpha"], "/tmp/scratch") == [
+            "uv", "version", "--frozen", "--short", "--directory", "/tmp/scratch",
+            "--bump", "minor", "--bump", "alpha",
+        ]
+
+    @pytest.mark.parametrize(
+        ("base", "segments", "expected"),
+        [
+            ("1.2.3", ["patch"], "1.2.4"),
+            ("1.2.3", ["minor"], "1.3.0"),
+            ("1.2.3", ["major"], "2.0.0"),
+            ("1.2.3", ["minor", "alpha"], "1.3.0a1"),
+            ("1.2.3", ["patch", "rc"], "1.2.4rc1"),
+            ("1.2.3", ["patch", "dev"], "1.2.4.dev1"),
+            ("1.2.3b2", ["stable"], "1.2.3"),
+            ("1.2.3b2", ["beta"], "1.2.3b3"),
+        ],
+    )
+    def test_bump_rules_match_the_static_mode(self, dynamic, base, segments, expected):
+        # uv does the arithmetic in both modes, so the rules cannot drift apart.
+        assert dynamic.apply_bump(segments, base) == expected
+
+    def test_unsupported_segment_is_reported(self, dynamic):
+        with pytest.raises(bump.BumpError, match="command failed"):
+            dynamic.apply_bump(["epoch"], "1.2.3")
 
 
 class TestNodeBumpCommands:
@@ -180,6 +216,7 @@ class TestConfig:
     def test_defaults_match_the_action_inputs(self):
         config = bump.Config.from_env({"BUMP_RULE": "patch"})
         assert config.project_type == "uv"
+        assert config.dynamic_versioning is False
         assert config.pre_release_base == "patch"
         assert config.pre_release_bump == "dev"
         assert config.update_changelog is True
@@ -223,6 +260,35 @@ class TestConfig:
     def test_backend_name_matches_its_project_type(self):
         for project_type, backend in bump.BACKENDS.items():
             assert backend.name == project_type
+
+    def test_dynamic_versioning_selects_the_dynamic_backend(self):
+        config = bump.Config.from_env(
+            {"BUMP_RULE": "patch", "DYNAMIC_VERSIONING": "true"}
+        )
+        assert isinstance(config.backend(), bump.DynamicBackend)
+
+    def test_dynamic_versioning_drops_manifest_only_inputs(self):
+        config = bump.Config.from_env(
+            {
+                "BUMP_RULE": "patch",
+                "DYNAMIC_VERSIONING": "true",
+                "WORKSPACE_PACKAGES": "one\ntwo",
+                "RUN_LOCK": "true",
+            }
+        )
+        assert config.workspace_packages == ()
+        assert config.run_lock is False
+
+    def test_dynamic_versioning_rejects_node_projects(self):
+        config = bump.Config.from_env(
+            {
+                "BUMP_RULE": "patch",
+                "DYNAMIC_VERSIONING": "true",
+                "PROJECT_TYPE": "yarn",
+            }
+        )
+        with pytest.raises(bump.BumpError, match="only supported for project-type"):
+            config.backend()
 
     def test_unknown_project_type_is_rejected(self):
         config = bump.Config.from_env({"BUMP_RULE": "patch", "PROJECT_TYPE": "poetry"})

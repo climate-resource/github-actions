@@ -19,6 +19,11 @@ The three Node types behave identically apart from that last column. `npm
 version` is used purely as a version-bumping CLI — it ships with Node, and the
 package manager you named stays in charge of the lockfile.
 
+Projects that derive their version from git tags (e.g. hatch-vcs) set
+`dynamic-versioning: true` instead. The tag is then the only thing that carries
+the version, so no manifest is touched. See
+[Dynamic versioning](#dynamic-versioning) below.
+
 The logic lives in [`bump.py`](bump.py), which `action.yml` invokes with
 `uv run --script`. Its unit tests are in [`../tests/test_bump.py`](../tests/test_bump.py).
 
@@ -40,6 +45,7 @@ The logic lives in [`bump.py`](bump.py), which `action.yml` invokes with
 | Input | Default | Description |
 | --- | --- | --- |
 | `project-type` | `uv` | `uv` for a Python project; `yarn`, `npm` or `pnpm` for a Node project. See the table above. |
+| `dynamic-versioning` | `false` | Take the base version from the latest reachable `v*` tag rather than from a manifest. `uv` projects only. See [Dynamic versioning](#dynamic-versioning). |
 | `bump-rule` | _required_ | Whitespace-separated arguments describing the bump. For `uv`, each segment becomes a separate `--bump`: `patch`, `minor`, `major`, `stable`, `minor alpha`, `patch rc`. From a stable version, prerelease segments (`alpha`, `beta`, `rc`, `dev`) must be combined with a release segment. For the Node types, passed verbatim to `npm version`: `patch`, `preminor --preid alpha`, `prerelease --preid rc`. |
 | `pre-release-bump` | `dev` | Pre-release segment for the second commit. For `uv`: `dev`, `alpha`, `beta`, `rc`. For the Node types: verbatim `npm version` arguments, e.g. `--preid dev`. Use `none` to skip the second commit. |
 | `pre-release-base` | `patch` | Base bump applied before the pre-release segment in the second commit. For `uv`: a bump rule (`patch`, `minor`, `major`, …). For the Node types: an `npm version` strategy word, e.g. `prepatch`. Use `none` to add the pre-release marker without bumping the base. |
@@ -92,6 +98,38 @@ back off the version `npm version` produced, so `--preid dev` landing on
 
 Pre-release detection is version-scheme aware: PEP 440 for `uv` (via
 `packaging`), semver for the Node types.
+
+## Dynamic versioning
+
+With `dynamic-versioning: true` the version is not stored anywhere in the repo,
+so the base comes from `git describe --tags --abbrev=0 --match 'v*'`, with the
+leading `v` stripped. A repo with no such tag starts from `0.0.0`.
+
+`bump-rule` means exactly what it means in static mode, because the new version
+is computed by running `uv version --bump` against a scratch project seeded with
+the base version. So `patch`, `minor`, `major`, `stable` and the pre-release
+segments (`alpha`, `beta`, `rc`, `dev`) all behave as they usually do, and an
+unsupported combination fails with uv's own message.
+
+What changes:
+
+- `pyproject.toml` is never rewritten and the lockfile is never refreshed, so
+  `workspace-packages` and `lock` do not apply.
+- Phase 2 never runs. There is no post-tag commit, `pre-release-bump` and
+  `pre-release-base` are ignored, and `dev-version` is empty.
+- The commit is made only if something is left to commit, which in practice
+  means the changelog build or `pre-commit-command` changed a tracked file. With
+  nothing to commit the tag lands on `HEAD` rather than on an empty commit.
+
+`update-changelog` and `pre-commit-command` work as they do in static mode.
+
+```yaml
+- uses: climate-resource/github-actions/setup-uv@v1
+- uses: climate-resource/github-actions/bump-version@v1
+  with:
+    dynamic-versioning: true
+    bump-rule: ${{ inputs.bump_rule }}
+```
 
 ## Example
 

@@ -15,6 +15,10 @@
 #       with:
 #         bump-rule: ${{ inputs.bump_rule }}
 #
+# Projects whose version comes from git tags (e.g. hatch-vcs) pass
+# `dynamic-versioning: true`, which tags without editing any manifest and lands
+# no post-tag commit.
+#
 # A PAT is only needed when branch protection blocks the github-actions bot or
 # when the release is auto-published and downstream workflows must fire. In
 # that case pass it as `secrets: token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}`.
@@ -33,6 +37,20 @@ on:
         required: false
         type: string
         default: "uv"
+      dynamic-versioning:
+        description: |
+          Take the base version from the latest reachable v* tag rather than from a manifest,
+          for projects whose version is derived from git tags (e.g. hatch-vcs).
+          With no such tag the base is 0.0.0.
+
+          No manifest is rewritten and no lockfile is refreshed,
+          so workspace-packages does not apply and neither does the post-tag commit,
+          which makes pre-release-bump and pre-release-base inert.
+
+          Only project-type 'uv' is supported.
+        required: false
+        type: boolean
+        default: false
       bump-rule:
         description: |
           For project-type 'uv': whitespace-separated list of segments passed to
@@ -206,6 +224,7 @@ jobs:
         uses: climate-resource/github-actions/bump-version@v1.5.1
         with:
           project-type: ${{ inputs.project-type }}
+          dynamic-versioning: ${{ inputs.dynamic-versioning }}
           bump-rule: ${{ inputs.bump-rule }}
           pre-release-bump: ${{ inputs.pre-release-bump }}
           pre-release-base: ${{ inputs.pre-release-base }}
