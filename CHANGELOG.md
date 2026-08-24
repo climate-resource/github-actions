@@ -17,6 +17,15 @@ You *may* edit previous changelogs to fix problems like typo corrections or such
 
 <!-- towncrier release notes start -->
 
+## github-actions v1.6.0 (2026-08-24)
+
+### Features
+
+- Added a `dynamic-versioning` input to the `bump-version` action and the `bump.yaml` reusable workflow.
+  Projects whose version is derived from git tags (e.g. hatch-vcs) can now be released by the tag alone,
+  with no version edit in `pyproject.toml` and no post-tag pre-release commit. ([#30](https://github.com/climate-resource/github-actions/pull/30))
+
+
 ## github-actions v1.5.1 (2026-08-21)
 
 No significant changes.
