@@ -140,6 +140,31 @@ jobs:
         dist/*
 ```
 
+### Dynamically versioned projects (hatch-vcs)
+
+Projects whose version is derived from git tags hold no version to edit, so the tag is the release:
+
+```yaml
+jobs:
+  bump:
+    uses: climate-resource/github-actions/.github/workflows/bump.yaml@v1
+    with:
+      dynamic-versioning: true
+      bump-rule: ${{ inputs.bump_rule }}
+      create-release: true
+      build-command: "uv build"
+      release-files: |
+        dist/*
+```
+
+The base version is the latest reachable `v*` tag,
+and `bump-rule` is applied to it exactly as it would be to a version read from `pyproject.toml`.
+Nothing is written to `pyproject.toml`, no lockfile is refreshed, and no post-tag commit is landed,
+so `pre-release-bump`, `pre-release-base` and `workspace-packages` are ignored.
+The changelog build and `pre-commit-command` still run, and their changes land in the tagged commit.
+
+
+
 ### Skipping the changelog or the pre-release dev commit
 
 ```yaml

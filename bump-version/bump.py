@@ -16,17 +16,21 @@ The work happens in two phases:
 2. `land_prerelease` optionally lands a second commit moving the branch onto a
    pre-release version, so later commits do not share the tagged version.
 
-Everything that differs between project types lives behind `Backend`; the two
-phases themselves never branch on the project type.
+Everything that differs between project types lives behind `Backend`, 
+so the two phases never branch on the project type.
+
+Projects whose version is derived from git tags (e.g. hatch-vcs) skip phase 2.
 """
 
 import os
 import shlex
 import subprocess
 import sys
+import tempfile
 from collections.abc import Generator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Protocol, Self
 
 from packaging.version import InvalidVersion, Version
@@ -34,6 +38,17 @@ from packaging.version import InvalidVersion, Version
 # Sentinel accepted by pre-release-base and pre-release-bump to skip that part
 # of the second commit.
 NONE = "none"
+
+# Base version for a dynamically versioned project with no release tag yet.
+FIRST_VERSION = "0.0.0"
+
+# Scratch project that uv can bump when using dynamic versioning
+SCRATCH_PROJECT = """\
+[project]
+name = "bump-version-scratch"
+version = "{version}"
+requires-python = ">=3.9"
+"""
 
 
 class BumpError(Exception):
@@ -116,6 +131,9 @@ class Backend(Protocol):
     def bump_command(self, segments: Sequence[str]) -> list[str]:
         """Build the command applying `bump-rule` segments to the root project."""
 
+    def apply_bump(self, segments: Sequence[str], base: str) -> str:
+        """Apply `bump-rule` segments to `base` and return the new version."""
+
     def prerelease_command(self, base: str, bump: str) -> list[str]:
         """Build the command applying the post-tag pre-release bump."""
 
@@ -139,7 +157,15 @@ class Backend(Protocol):
         """
 
 
-class UvBackend:
+class ManifestBackend:
+    """Backends whose version lives in a file the bump command rewrites."""
+
+    def apply_bump(self, segments: Sequence[str], base: str) -> str:
+        run(self.bump_command(segments))
+        return self.read_version()
+
+
+class UvBackend(ManifestBackend):
     """Python projects whose version lives in `pyproject.toml`, managed by uv."""
 
     name = "uv"
@@ -180,7 +206,7 @@ class UvBackend:
         return requested
 
 
-class NodeBackend:
+class NodeBackend(ManifestBackend):
     """Node projects whose version lives in `package.json`.
 
     Every Node project type reads and bumps the same way: `npm version` ships
@@ -249,6 +275,58 @@ class PnpmBackend(NodeBackend):
     lock = ("pnpm", "install", "--lockfile-only")
 
 
+def latest_tagged_version(tags: Sequence[str]) -> str | None:
+    """Return the highest release among `v`-prefixed `tags`, or None if there is none.
+
+    Ordering is PEP 440 rather than git's `v:refname`, 
+    which ranks a pre-release above the release it precedes and does not skip tags that are not versions.
+    """
+    versions = []
+    for tag in tags:
+        try:
+            versions.append(Version(tag.removeprefix("v")))
+        except InvalidVersion:
+            log(f"Ignoring tag {tag}, which is not a version")
+    if not versions:
+        return None
+    return str(max(versions))
+
+
+class DynamicBackend(UvBackend):
+    """Python projects whose version is derived from git tags (e.g. hatch-vcs).
+
+    No file in the repo carries the version, 
+    so the base comes from the latest reachable tag and the bump is applied to a scratch project. 
+    Borrowing uv rather than reimplementing PEP 440 keeps the bump rules identical to the static mode's.
+    """
+
+    def read_version(self) -> str:
+        tags = run(
+            ["git", "tag", "--list", "v*", "--merged", "HEAD"], capture=True
+        ).split()
+        version = latest_tagged_version(tags)
+        if version is None:
+            log(f"No v* release tag is reachable, so the base version is {FIRST_VERSION}")
+            return FIRST_VERSION
+        return version
+
+    def scratch_bump_command(self, segments: Sequence[str], directory: str) -> list[str]:
+        """Build the bump command for the scratch project in `directory`.
+
+        Deliberately not `bump_command`, which rewrites the repo's own manifest.
+        """
+        command = ["uv", "version", "--frozen", "--short", "--directory", directory]
+        for segment in segments:
+            command += ["--bump", segment]
+        return command
+
+    def apply_bump(self, segments: Sequence[str], base: str) -> str:
+        with tempfile.TemporaryDirectory() as directory:
+            manifest = Path(directory) / "pyproject.toml"
+            manifest.write_text(SCRATCH_PROJECT.format(version=base), encoding="utf-8")
+            return run(self.scratch_bump_command(segments, directory), capture=True)
+
+
 BACKENDS: dict[str, type[Backend]] = {
     "uv": UvBackend,
     "yarn": YarnBackend,
@@ -273,6 +351,7 @@ def as_lines(value: str) -> tuple[str, ...]:
 @dataclass(frozen=True)
 class Config:
     project_type: str
+    dynamic_versioning: bool
     bump_rule: str
     pre_release_bump: str
     pre_release_base: str
@@ -290,14 +369,19 @@ class Config:
         def get(name: str, default: str = "") -> str:
             return source.get(name, default)
 
+        dynamic = as_bool(get("DYNAMIC_VERSIONING", "false"))
+
         return cls(
             project_type=get("PROJECT_TYPE", "uv").strip(),
+            dynamic_versioning=dynamic,
             bump_rule=get("BUMP_RULE"),
             pre_release_bump=get("PRE_RELEASE_BUMP", "dev").strip(),
             pre_release_base=get("PRE_RELEASE_BASE", "patch").strip(),
             update_changelog=as_bool(get("UPDATE_CHANGELOG", "true")),
-            workspace_packages=as_lines(get("WORKSPACE_PACKAGES")),
-            run_lock=as_bool(get("RUN_LOCK", "true")),
+            # Dynamic versioning rewrites no manifest, so there is nothing to
+            # mirror onto workspace packages and nothing to relock.
+            workspace_packages=() if dynamic else as_lines(get("WORKSPACE_PACKAGES")),
+            run_lock=as_bool(get("RUN_LOCK", "true")) and not dynamic,
             pre_commit_command=get("PRE_COMMIT_COMMAND").strip(),
             commit_skip_hooks=as_bool(get("COMMIT_SKIP_HOOKS", "false")),
             do_push=as_bool(get("DO_PUSH", "true")),
@@ -315,6 +399,13 @@ class Config:
             )
         if not self.bump_segments:
             raise BumpError("bump-rule must not be empty")
+        if self.dynamic_versioning:
+            if self.project_type != "uv":
+                raise BumpError(
+                    "dynamic-versioning is only supported for project-type 'uv', "
+                    f"got '{self.project_type}'"
+                )
+            return DynamicBackend()
         return BACKENDS[self.project_type]()
 
 
@@ -340,6 +431,27 @@ def run_pre_commit_command(config: Config) -> None:
         return
     log("Running pre-commit command")
     run(["bash", "-c", config.pre_commit_command])
+
+
+def has_tracked_changes() -> bool:
+    """Return whether `git commit -a` would have anything to commit."""
+    status = run(["git", "status", "--porcelain", "--untracked-files=no"], capture=True)
+    return bool(status)
+
+
+def guard_untagged_head(new_version: str) -> None:
+    """Refuse to put a second release tag on a commit that already carries one.
+
+    hatch-vcs reads the lower tag, so the artefacts would not match `new_version`.
+    """
+    existing = latest_tagged_version(
+        run(["git", "tag", "--points-at", "HEAD"], capture=True).split()
+    )
+    if existing is not None:
+        raise BumpError(
+            f"HEAD is already tagged v{existing}, so v{new_version} would build "
+            f"{existing}. Release from a later commit."
+        )
 
 
 def commit(config: Config, message: str) -> None:
@@ -368,8 +480,7 @@ def tag_release(config: Config, backend: Backend) -> Release:
     log(f"Bumping from version {base_version}")
 
     with group("Bump version"):
-        run(backend.bump_command(config.bump_segments))
-        new_version = backend.read_version()
+        new_version = backend.apply_bump(config.bump_segments, base_version)
         log(f"Bumped to version {new_version}")
         mirror_workspace(config, backend, new_version)
         refresh_lock(config, backend)
@@ -382,7 +493,14 @@ def tag_release(config: Config, backend: Backend) -> Release:
 
     with group("Commit and tag"):
         run_pre_commit_command(config)
-        commit(config, f"bump: version {base_version} -> {new_version}")
+        # A dynamic bump changes nothing on its own, so the tag can land on
+        # HEAD rather than on an empty commit.
+        if config.dynamic_versioning and not has_tracked_changes():
+            log("Nothing to commit, so tagging HEAD as it stands")
+        else:
+            commit(config, f"bump: version {base_version} -> {new_version}")
+        if config.dynamic_versioning:
+            guard_untagged_head(new_version)
         run(["git", "tag", f"v{new_version}"])
         if config.do_push:
             run(["git", "push"])
@@ -400,6 +518,9 @@ def land_prerelease(config: Config, backend: Backend, release: Release) -> str |
 
     Returns the new pre-release version, or None when the bump was skipped.
     """
+    if config.dynamic_versioning:
+        log("Skipping pre-release bump because the version comes from the tag")
+        return None
     if config.pre_release_bump == NONE:
         log("Skipping pre-release bump (pre-release-bump=none)")
         return None

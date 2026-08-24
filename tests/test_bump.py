@@ -14,6 +14,11 @@ def uv() -> bump.UvBackend:
 
 
 @pytest.fixture
+def dynamic() -> bump.DynamicBackend:
+    return bump.DynamicBackend()
+
+
+@pytest.fixture
 def yarn() -> bump.YarnBackend:
     return bump.YarnBackend()
 
@@ -55,6 +60,169 @@ class TestUvBumpCommands:
         assert uv.changelog_command("1.2.3") == [
             "uv", "run", "towncrier", "build", "--yes", "--version", "v1.2.3",
         ]
+
+
+class TestLatestTaggedVersion:
+    """Picking the base version out of whatever tags a repo happens to carry."""
+
+    def test_no_tags_at_all(self):
+        assert bump.latest_tagged_version([]) is None
+
+    def test_no_tag_is_a_version(self):
+        assert bump.latest_tagged_version(["vendor-3", "v-junk", "vlatest"]) is None
+
+    def test_highest_wins_not_the_closest(self):
+        # git describe --abbrev=0 returns v1.5 here, which would re-tag v1.5.1.
+        assert bump.latest_tagged_version(["v1.5", "v1.5.0", "v1.5.1"]) == "1.5.1"
+
+    def test_ordering_is_numeric_not_lexical(self):
+        assert bump.latest_tagged_version(["v1.9.0", "v1.10.0"]) == "1.10.0"
+
+    def test_a_prerelease_ranks_below_its_release(self):
+        # git's v:refname sort ranks these the other way up.
+        tags = ["v1.6.0a1", "v1.6.0rc2", "v1.6.0"]
+        assert bump.latest_tagged_version(tags) == "1.6.0"
+
+    def test_a_prerelease_wins_when_it_is_the_highest(self):
+        assert bump.latest_tagged_version(["v1.5.0", "v1.6.0a1"]) == "1.6.0a1"
+
+    def test_prerelease_segments_rank_against_each_other(self):
+        tags = ["v1.6.0.dev1", "v1.6.0a1", "v1.6.0b1", "v1.6.0rc1"]
+        assert bump.latest_tagged_version(tags) == "1.6.0rc1"
+
+    def test_a_post_release_outranks_its_release(self):
+        assert bump.latest_tagged_version(["v1.5.0", "v1.5.0.post1"]) == "1.5.0.post1"
+
+    def test_an_epoch_outranks_a_higher_looking_number(self):
+        assert bump.latest_tagged_version(["v9.0.0", "v1!0.1.0"]) == "1!0.1.0"
+
+    def test_unparseable_tags_are_skipped_not_fatal(self):
+        tags = ["vendor-3", "v1.5.0", "v-junk", "v1.6.0"]
+        assert bump.latest_tagged_version(tags) == "1.6.0"
+
+    def test_the_version_is_normalised_for_uv(self):
+        assert bump.latest_tagged_version(["v1.5.0.RC1"]) == "1.5.0rc1"
+
+    def test_a_bare_version_tag_still_parses(self):
+        assert bump.latest_tagged_version(["1.2.3"]) == "1.2.3"
+
+
+class TestDynamicReadVersion:
+    """`read_version` against a real repo, since the tag listing is the risky part."""
+
+    def _repo(self, tmp_path, tags):
+        import subprocess
+
+        run = lambda *a: subprocess.run(a, cwd=tmp_path, check=True, capture_output=True)
+        run("git", "init", "-q", ".")
+        run("git", "config", "user.email", "t@example.com")
+        run("git", "config", "user.name", "t")
+        run("git", "commit", "-q", "--allow-empty", "-m", "base")
+        for tag in tags:
+            run("git", "tag", tag)
+        return tmp_path
+
+    def test_the_duplicate_tag_bug_is_fixed(self, dynamic, tmp_path, monkeypatch):
+        # v1.5 and v1.5.1 on one commit: the old code picked v1.5 and re-tagged v1.5.1.
+        monkeypatch.chdir(self._repo(tmp_path, ["v1.5", "v1.5.0", "v1.5.1"]))
+        assert dynamic.read_version() == "1.5.1"
+
+    def test_an_untagged_repo_starts_from_zero(self, dynamic, tmp_path, monkeypatch):
+        monkeypatch.chdir(self._repo(tmp_path, []))
+        assert dynamic.read_version() == bump.FIRST_VERSION
+
+    def test_non_version_tags_do_not_become_the_base(self, dynamic, tmp_path, monkeypatch):
+        monkeypatch.chdir(self._repo(tmp_path, ["vendor-3", "v1.2.0"]))
+        assert dynamic.read_version() == "1.2.0"
+
+    def test_a_tag_not_reachable_from_head_is_ignored(self, dynamic, tmp_path, monkeypatch):
+        import subprocess
+
+        repo = self._repo(tmp_path, ["v1.0.0"])
+        run = lambda *a: subprocess.run(a, cwd=repo, check=True, capture_output=True)
+        run("git", "checkout", "-q", "-b", "side")
+        run("git", "commit", "-q", "--allow-empty", "-m", "side")
+        run("git", "tag", "v9.9.9")
+        run("git", "checkout", "-q", "-")
+        monkeypatch.chdir(repo)
+        assert dynamic.read_version() == "1.0.0"
+
+
+class TestGuardUntaggedHead:
+    """Dynamic mode must not stack a second release tag on one commit."""
+
+    def _repo(self, tmp_path, tags):
+        import subprocess
+
+        run = lambda *a: subprocess.run(a, cwd=tmp_path, check=True, capture_output=True)
+        run("git", "init", "-q", ".")
+        run("git", "config", "user.email", "t@example.com")
+        run("git", "config", "user.name", "t")
+        run("git", "commit", "-q", "--allow-empty", "-m", "base")
+        for tag in tags:
+            run("git", "tag", tag)
+        return tmp_path
+
+    def test_an_untagged_head_is_allowed(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(self._repo(tmp_path, []))
+        bump.guard_untagged_head("1.4.0")
+
+    def test_a_release_tag_on_head_is_refused(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(self._repo(tmp_path, ["v1.3.0"]))
+        with pytest.raises(bump.BumpError, match="already tagged v1.3.0"):
+            bump.guard_untagged_head("1.4.0")
+
+    def test_a_moving_alias_on_head_is_refused(self, tmp_path, monkeypatch):
+        # An alias such as v1 is what hatch-vcs would build, not the new tag.
+        monkeypatch.chdir(self._repo(tmp_path, ["v1", "v1.3.0"]))
+        with pytest.raises(bump.BumpError, match="already tagged"):
+            bump.guard_untagged_head("1.4.0")
+
+    def test_a_non_version_tag_on_head_is_allowed(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(self._repo(tmp_path, ["nightly"]))
+        bump.guard_untagged_head("1.4.0")
+
+    def test_a_tag_on_an_earlier_commit_is_allowed(self, tmp_path, monkeypatch):
+        import subprocess
+
+        repo = self._repo(tmp_path, ["v1.3.0"])
+        subprocess.run(
+            ("git", "commit", "-q", "--allow-empty", "-m", "changelog"),
+            cwd=repo, check=True, capture_output=True,
+        )
+        monkeypatch.chdir(repo)
+        bump.guard_untagged_head("1.4.0")
+
+
+class TestDynamicBumpCommands:
+    """The bump runs against a scratch project, never the repo's own manifest."""
+
+    def test_bump_targets_the_scratch_directory(self, dynamic):
+        assert dynamic.scratch_bump_command(["minor", "alpha"], "/tmp/scratch") == [
+            "uv", "version", "--frozen", "--short", "--directory", "/tmp/scratch",
+            "--bump", "minor", "--bump", "alpha",
+        ]
+
+    @pytest.mark.parametrize(
+        ("base", "segments", "expected"),
+        [
+            ("1.2.3", ["patch"], "1.2.4"),
+            ("1.2.3", ["minor"], "1.3.0"),
+            ("1.2.3", ["major"], "2.0.0"),
+            ("1.2.3", ["minor", "alpha"], "1.3.0a1"),
+            ("1.2.3", ["patch", "rc"], "1.2.4rc1"),
+            ("1.2.3", ["patch", "dev"], "1.2.4.dev1"),
+            ("1.2.3b2", ["stable"], "1.2.3"),
+            ("1.2.3b2", ["beta"], "1.2.3b3"),
+        ],
+    )
+    def test_bump_rules_match_the_static_mode(self, dynamic, base, segments, expected):
+        # uv does the arithmetic in both modes, so the rules cannot drift apart.
+        assert dynamic.apply_bump(segments, base) == expected
+
+    def test_unsupported_segment_is_reported(self, dynamic):
+        with pytest.raises(bump.BumpError, match="command failed"):
+            dynamic.apply_bump(["epoch"], "1.2.3")
 
 
 class TestNodeBumpCommands:
@@ -180,6 +348,7 @@ class TestConfig:
     def test_defaults_match_the_action_inputs(self):
         config = bump.Config.from_env({"BUMP_RULE": "patch"})
         assert config.project_type == "uv"
+        assert config.dynamic_versioning is False
         assert config.pre_release_base == "patch"
         assert config.pre_release_bump == "dev"
         assert config.update_changelog is True
@@ -223,6 +392,35 @@ class TestConfig:
     def test_backend_name_matches_its_project_type(self):
         for project_type, backend in bump.BACKENDS.items():
             assert backend.name == project_type
+
+    def test_dynamic_versioning_selects_the_dynamic_backend(self):
+        config = bump.Config.from_env(
+            {"BUMP_RULE": "patch", "DYNAMIC_VERSIONING": "true"}
+        )
+        assert isinstance(config.backend(), bump.DynamicBackend)
+
+    def test_dynamic_versioning_drops_manifest_only_inputs(self):
+        config = bump.Config.from_env(
+            {
+                "BUMP_RULE": "patch",
+                "DYNAMIC_VERSIONING": "true",
+                "WORKSPACE_PACKAGES": "one\ntwo",
+                "RUN_LOCK": "true",
+            }
+        )
+        assert config.workspace_packages == ()
+        assert config.run_lock is False
+
+    def test_dynamic_versioning_rejects_node_projects(self):
+        config = bump.Config.from_env(
+            {
+                "BUMP_RULE": "patch",
+                "DYNAMIC_VERSIONING": "true",
+                "PROJECT_TYPE": "yarn",
+            }
+        )
+        with pytest.raises(bump.BumpError, match="only supported for project-type"):
+            config.backend()
 
     def test_unknown_project_type_is_rejected(self):
         config = bump.Config.from_env({"BUMP_RULE": "patch", "PROJECT_TYPE": "poetry"})

@@ -8,16 +8,20 @@ tagged version.
 `project-type` selects the backend, and is named after the package manager that
 owns the lockfile:
 
-| `project-type` | Version lives in | Bumped with | `lock: true` runs |
-| --- | --- | --- | --- |
-| `uv` (default) | `pyproject.toml` | `uv version --bump` | `uv lock` |
-| `yarn` | `package.json` | `npm version` | `yarn install --mode=update-lockfile` |
-| `npm` | `package.json` | `npm version` | `npm install --package-lock-only` |
-| `pnpm` | `package.json` | `npm version` | `pnpm install --lockfile-only` |
+| `project-type` | Version lives in | Bumped with         | `lock: true` runs                     |
+| -------------- | ---------------- | ------------------- | ------------------------------------- |
+| `uv` (default) | `pyproject.toml` | `uv version --bump` | `uv lock`                             |
+| `yarn`         | `package.json`   | `npm version`       | `yarn install --mode=update-lockfile` |
+| `npm`          | `package.json`   | `npm version`       | `npm install --package-lock-only`     |
+| `pnpm`         | `package.json`   | `npm version`       | `pnpm install --lockfile-only`        |
 
 The three Node types behave identically apart from that last column. `npm
 version` is used purely as a version-bumping CLI — it ships with Node, and the
 package manager you named stays in charge of the lockfile.
+
+Projects that derive their version from git tags (e.g. hatch-vcs) set `dynamic-versioning: true` instead.
+The tag is then the only thing that carries the version, so no manifest is touched.
+See [Dynamic versioning](#dynamic-versioning) below.
 
 The logic lives in [`bump.py`](bump.py), which `action.yml` invokes with
 `uv run --script`. Its unit tests are in [`../tests/test_bump.py`](../tests/test_bump.py).
@@ -40,6 +44,7 @@ The logic lives in [`bump.py`](bump.py), which `action.yml` invokes with
 | Input | Default | Description |
 | --- | --- | --- |
 | `project-type` | `uv` | `uv` for a Python project; `yarn`, `npm` or `pnpm` for a Node project. See the table above. |
+| `dynamic-versioning` | `false` | Take the base version from the latest reachable `v*` tag rather than from a manifest. `uv` projects only. See [Dynamic versioning](#dynamic-versioning). |
 | `bump-rule` | _required_ | Whitespace-separated arguments describing the bump. For `uv`, each segment becomes a separate `--bump`: `patch`, `minor`, `major`, `stable`, `minor alpha`, `patch rc`. From a stable version, prerelease segments (`alpha`, `beta`, `rc`, `dev`) must be combined with a release segment. For the Node types, passed verbatim to `npm version`: `patch`, `preminor --preid alpha`, `prerelease --preid rc`. |
 | `pre-release-bump` | `dev` | Pre-release segment for the second commit. For `uv`: `dev`, `alpha`, `beta`, `rc`. For the Node types: verbatim `npm version` arguments, e.g. `--preid dev`. Use `none` to skip the second commit. |
 | `pre-release-base` | `patch` | Base bump applied before the pre-release segment in the second commit. For `uv`: a bump rule (`patch`, `minor`, `major`, …). For the Node types: an `npm version` strategy word, e.g. `prepatch`. Use `none` to add the pre-release marker without bumping the base. |
@@ -92,6 +97,51 @@ back off the version `npm version` produced, so `--preid dev` landing on
 
 Pre-release detection is version-scheme aware: PEP 440 for `uv` (via
 `packaging`), semver for the Node types.
+
+## Dynamic versioning
+
+With `dynamic-versioning: true` the version is not stored anywhere in the repo,
+so the base is the highest `v*` tag reachable from `HEAD`, with the leading `v` stripped.
+A repo with no such tag starts from `0.0.0`.
+
+Tags are ranked by PEP 440.
+A tag that is not a valid version, such as `vendor-3`, is ignored rather than treated as one.
+
+`bump-rule` means exactly what it means in static mode (`uv version --bump` is still used to calculate the tag).
+So `patch`, `minor`, `major`, `stable` and the pre-release segments (`alpha`, `beta`, `rc`, `dev`)
+all behave as they usually do, and an unsupported combination fails with uv's own message.
+
+What changes:
+
+- `pyproject.toml` or the lockfile is not edited as it isn't needed,
+  so `workspace-packages` and `lock` do not apply.
+- There is no post-tag commit, `pre-release-bump` and `pre-release-base` are ignored,
+  and `dev-version` is empty.
+- The commit is made only if something is left to commit,
+  which in practice means the changelog build or `pre-commit-command` changed a tracked file.
+  With nothing to commit the tag lands on `HEAD` rather than on an empty commit.
+
+`update-changelog` and `pre-commit-command` work as they do in static mode.
+
+```yaml
+- uses: climate-resource/github-actions/setup-uv@v1
+- uses: climate-resource/github-actions/bump-version@v1
+  with:
+    dynamic-versioning: true
+    bump-rule: ${{ inputs.bump_rule }}
+```
+
+### Gotchas
+
+The tag is the only record of the version, so anything that muddies the tags muddies the release.
+
+- Releasing twice from one commit is refused, because hatch-vcs would read the lower tag.
+  Moving aliases such as `v1` or `v1.3` trip the same guard, so a repo that publishes them cannot use `dynamic-versioning`.
+- Every package in the repo shares one version, because they all read the same tag.
+  A release moves them together and no single member can be released on its own.
+- A member in a subdirectory needs `raw-options = { search_parent_directories = true }`
+  under `[tool.hatch.version]`, or hatch-vcs fails to find the repository at all.
+  This configuration is needed for monorepos.
 
 ## Example
 
