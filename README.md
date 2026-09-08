@@ -10,6 +10,8 @@ Reusable GitHub Actions and workflows for Climate Resource repositories.
 | [bump-version](./bump-version)   | Bump version with `uv version`, towncrier changelog, tag, dev-commit |
 | [draft-release](./draft-release) | Create a draft GitHub release with notes and artifacts               |
 
+[notify-flux](./notify-flux) notifies Flux after an image is published.
+
 ## Reusable workflows
 
 | Workflow                                                       | Trigger         | Description                                                              |
