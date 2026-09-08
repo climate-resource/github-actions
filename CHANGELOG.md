@@ -17,6 +17,13 @@ You *may* edit previous changelogs to fix problems like typo corrections or such
 
 <!-- towncrier release notes start -->
 
+## github-actions v1.7.0 (2026-09-08)
+
+### Features
+
+- Adds a shared action to notify Flux after publishing a service image. ([#31](https://github.com/climate-resource/github-actions/pull/31))
+
+
 ## github-actions v1.6.1 (2026-08-31)
 
 No significant changes.
