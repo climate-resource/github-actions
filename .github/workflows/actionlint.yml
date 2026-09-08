@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   actionlint:
-    runs-on: gus-small
+    runs-on: ubuntu-latest
     steps:
       - name: Check out repository
         uses: actions/checkout@v7.0.1

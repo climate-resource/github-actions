@@ -1,0 +1,23 @@
+name: Notify Flux
+description: Notify a generic-hmac Flux Receiver after an image is published.
+inputs:
+  receiver-url:
+    description: Full Flux Receiver URL from FLUX_RECEIVER_URL.
+    required: false
+  receiver-token:
+    description: HMAC token from FLUX_RECEIVER_TOKEN.
+    required: false
+  sha:
+    description: Commit whose image was published.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Notify Flux
+      shell: bash
+      env:
+        FLUX_RECEIVER_URL: ${{ inputs.receiver-url }}
+        FLUX_RECEIVER_TOKEN: ${{ inputs.receiver-token }}
+        BUILD_SHA: ${{ inputs.sha }}
+        ACTION_PATH: ${{ github.action_path }}
+      run: python3 "$ACTION_PATH/notify.py"
