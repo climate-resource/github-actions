@@ -17,6 +17,13 @@ You *may* edit previous changelogs to fix problems like typo corrections or such
 
 <!-- towncrier release notes start -->
 
+## github-actions v1.7.1 (2026-09-15)
+
+### Trivial/Internal Changes
+
+- [#32](https://github.com/climate-resource/github-actions/pull/32)
+
+
 ## github-actions v1.7.0 (2026-09-08)
 
 ### Features
