@@ -18,7 +18,7 @@
       "groupName": "internal non-major"
     },
     {
-      "description": "Actions consumers run, kept apart because they ship in the next release",
+      "description": "Actions consumers run ship in the next release. Must follow the internal rule to override it",
       "matchFileNames": ["*/action.yml", ".github/workflows/bump.yaml"],
       "matchUpdateTypes": ["minor", "patch", "digest", "pin", "pinDigest"],
       "groupName": "shipped non-major"
@@ -30,7 +30,7 @@
       "description": "Tool versions annotated with a renovate comment in workflows",
       "managerFilePatterns": ["/^\\.github/workflows/.+\\.ya?ml$/"],
       "matchStrings": [
-        "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>\\S+)\\s+[A-Z_]+: ?[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
+        "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?\\s+[A-Za-z_]+: ?[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
       ]
     }
   ]

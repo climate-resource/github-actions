@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 jobs:
-  validate:
+  renovate-config-validator:
     runs-on: ubuntu-latest
     env:
       # renovate: datasource=npm depName=renovate
@@ -25,6 +25,13 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v7.0.1
 
+      - name: Setup Node
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24
+
       - name: Validate Renovate config
         shell: bash
-        run: npx --yes --package "renovate@${RENOVATE_VERSION}" -- renovate-config-validator --strict renovate.json
+        run: >-
+          npx --yes --package "renovate@${RENOVATE_VERSION}" --
+          renovate-config-validator --strict renovate.json
