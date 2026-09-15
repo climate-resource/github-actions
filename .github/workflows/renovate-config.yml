@@ -1,0 +1,37 @@
+name: Renovate config
+
+on:
+  pull_request:
+    paths:
+      - "renovate.json"
+      - ".github/workflows/renovate-config.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "renovate.json"
+      - ".github/workflows/renovate-config.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  renovate-config-validator:
+    runs-on: ubuntu-latest
+    env:
+      # renovate: datasource=npm depName=renovate
+      RENOVATE_VERSION: 44.93.0
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Setup Node
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24
+
+      - name: Validate Renovate config
+        shell: bash
+        run: >-
+          npx --yes --package "renovate@${RENOVATE_VERSION}" --
+          renovate-config-validator --strict renovate.json

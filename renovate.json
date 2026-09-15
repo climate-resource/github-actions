@@ -1,0 +1,28 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:best-practices",
+    ":semanticCommits",
+    "customManagers:githubActionsVersions"
+  ],
+  "labels": ["dependencies"],
+  "minimumReleaseAge": "7 days",
+  "packageRules": [
+    {
+      "description": "First-party refs are pinned by scripts/pin-bump-refs.sh at release",
+      "matchPackageNames": ["climate-resource/github-actions"],
+      "enabled": false
+    },
+    {
+      "description": "Group non-major updates to dev tooling and this repo's own CI",
+      "matchUpdateTypes": ["minor", "patch", "digest", "pin", "pinDigest"],
+      "groupName": "internal non-major"
+    },
+    {
+      "description": "Actions that consumers run ship in the next release. This rule must follow the internal one to override it",
+      "matchFileNames": ["*/action.yml", ".github/workflows/bump.yaml"],
+      "matchUpdateTypes": ["minor", "patch", "digest", "pin", "pinDigest"],
+      "groupName": "shipped non-major"
+    }
+  ]
+}
