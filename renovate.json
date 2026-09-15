@@ -2,7 +2,8 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:best-practices",
-    ":semanticCommits"
+    ":semanticCommits",
+    "customManagers:githubActionsVersions"
   ],
   "labels": ["dependencies"],
   "minimumReleaseAge": "7 days",
@@ -22,16 +23,6 @@
       "matchFileNames": ["*/action.yml", ".github/workflows/bump.yaml"],
       "matchUpdateTypes": ["minor", "patch", "digest", "pin", "pinDigest"],
       "groupName": "shipped non-major"
-    }
-  ],
-  "customManagers": [
-    {
-      "customType": "regex",
-      "description": "Tool versions annotated with a renovate comment in workflows",
-      "managerFilePatterns": ["/^\\.github/workflows/.+\\.ya?ml$/"],
-      "matchStrings": [
-        "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?\\s+[A-Za-z_]+: ?[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
-      ]
     }
   ]
 }
