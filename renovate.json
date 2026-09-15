@@ -18,7 +18,7 @@
       "groupName": "internal non-major"
     },
     {
-      "description": "Actions consumers run ship in the next release. Must follow the internal rule to override it",
+      "description": "Actions that consumers run ship in the next release. This rule must follow the internal one to override it",
       "matchFileNames": ["*/action.yml", ".github/workflows/bump.yaml"],
       "matchUpdateTypes": ["minor", "patch", "digest", "pin", "pinDigest"],
       "groupName": "shipped non-major"
