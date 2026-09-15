@@ -8,6 +8,11 @@
   "minimumReleaseAge": "7 days",
   "packageRules": [
     {
+      "description": "First-party refs are pinned by scripts/pin-bump-refs.sh at release",
+      "matchPackageNames": ["climate-resource/github-actions"],
+      "enabled": false
+    },
+    {
       "description": "Group non-major updates",
       "matchUpdateTypes": ["minor", "patch", "digest", "pin", "pinDigest"],
       "groupName": "non-major"
