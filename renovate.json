@@ -13,9 +13,25 @@
       "enabled": false
     },
     {
-      "description": "Group non-major updates",
+      "description": "Group non-major updates to dev tooling and this repo's own CI",
       "matchUpdateTypes": ["minor", "patch", "digest", "pin", "pinDigest"],
-      "groupName": "non-major"
+      "groupName": "internal non-major"
+    },
+    {
+      "description": "Actions consumers run, kept apart because they ship in the next release",
+      "matchFileNames": ["*/action.yml", ".github/workflows/bump.yaml"],
+      "matchUpdateTypes": ["minor", "patch", "digest", "pin", "pinDigest"],
+      "groupName": "shipped non-major"
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Tool versions annotated with a renovate comment in workflows",
+      "managerFilePatterns": ["/^\\.github/workflows/.+\\.ya?ml$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>\\S+)\\s+[A-Z_]+: ?[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
+      ]
     }
   ]
 }
