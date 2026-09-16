@@ -17,6 +17,13 @@ You *may* edit previous changelogs to fix problems like typo corrections or such
 
 <!-- towncrier release notes start -->
 
+## github-actions v1.8.0 (2026-09-16)
+
+### Deprecations
+
+- Deprecated the `notify-flux` action, because Flux now polls for OCI deployment bundles. It will be removed in the next major release. ([#38](https://github.com/climate-resource/github-actions/pull/38))
+
+
 ## github-actions v1.7.1 (2026-09-15)
 
 ### Trivial/Internal Changes
