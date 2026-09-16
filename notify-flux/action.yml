@@ -1,5 +1,5 @@
 name: Notify Flux
-description: Notify a generic-hmac Flux Receiver after an image is published.
+description: Deprecated. Notify a generic-hmac Flux Receiver after an image is published.
 inputs:
   receiver-url:
     description: Full Flux Receiver URL from FLUX_RECEIVER_URL.
@@ -13,6 +13,9 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Deprecation notice
+      shell: bash
+      run: echo "::warning title=notify-flux is deprecated::Flux polls for OCI deployment bundles, so remove this step. The action goes in the next major release."
     - name: Notify Flux
       shell: bash
       env:

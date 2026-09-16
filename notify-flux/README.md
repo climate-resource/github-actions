@@ -1,5 +1,9 @@
 # Notify Flux
 
+> [!WARNING]
+> Deprecated and removed in the next major release.
+> Flux polls for OCI deployment bundles, so remove this step from build workflows.
+
 Calls a Flux `generic-hmac` Receiver after an image has been pushed.
 The request body contains the published commit SHA.
 The action needs Python 3 on the runner.
