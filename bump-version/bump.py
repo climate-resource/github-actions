@@ -474,6 +474,14 @@ class Release:
     is_prerelease: bool
 
 
+def push_release(tag: str) -> None:
+    """Push the branch and its release tag in one transaction.
+
+    CI triggered by the branch push then always sees the tag, so a tag-derived version is never a dev build.
+    """
+    run(["git", "push", "--atomic", "origin", "HEAD", f"refs/tags/{tag}"])
+
+
 def tag_release(config: Config, backend: Backend) -> Release:
     """Bump the version, build the changelog, then commit, tag and push."""
     base_version = backend.read_version()
@@ -503,8 +511,7 @@ def tag_release(config: Config, backend: Backend) -> Release:
             guard_untagged_head(new_version)
         run(["git", "tag", f"v{new_version}"])
         if config.do_push:
-            run(["git", "push"])
-            run(["git", "push", "--tags"])
+            push_release(f"v{new_version}")
 
     return Release(
         base_version=base_version,
