@@ -194,6 +194,60 @@ class TestGuardUntaggedHead:
         bump.guard_untagged_head("1.4.0")
 
 
+class TestPushRelease:
+    """The branch and the tag reach the remote together or not at all."""
+
+    def _repos(self, tmp_path):
+        import subprocess
+
+        remote, local = tmp_path / "remote.git", tmp_path / "local"
+        subprocess.run(("git", "init", "-q", "--bare", "-b", "main", str(remote)), check=True)
+        subprocess.run(("git", "clone", "-q", str(remote), str(local)), check=True, capture_output=True)
+        run = lambda *a: subprocess.run(a, cwd=local, check=True, capture_output=True, text=True)
+        run("git", "config", "user.email", "t@example.com")
+        run("git", "config", "user.name", "t")
+        run("git", "checkout", "-q", "-b", "main")
+        run("git", "commit", "-q", "--allow-empty", "-m", "base")
+        run("git", "push", "-q", "origin", "main")
+        return remote, run
+
+    def test_branch_and_tag_are_pushed(self, tmp_path, monkeypatch):
+        import subprocess
+
+        remote, run = self._repos(tmp_path)
+        run("git", "commit", "-q", "--allow-empty", "-m", "changelog")
+        run("git", "tag", "v1.0.0")
+        monkeypatch.chdir(tmp_path / "local")
+        bump.push_release("v1.0.0")
+        head = run("git", "rev-parse", "HEAD").stdout.strip()
+        refs = subprocess.run(
+            ("git", "ls-remote", str(remote)), check=True, capture_output=True, text=True
+        ).stdout
+        assert f"{head}\trefs/heads/main" in refs
+        assert f"{head}\trefs/tags/v1.0.0" in refs
+
+    def test_a_rejected_branch_push_leaves_the_tag_behind(self, tmp_path, monkeypatch):
+        import subprocess
+
+        remote, run = self._repos(tmp_path)
+        other = tmp_path / "other"
+        subprocess.run(("git", "clone", "-q", str(remote), str(other)), check=True, capture_output=True)
+        for args in (
+            ("git", "-c", "user.email=t@example.com", "-c", "user.name=t", "commit", "-q", "--allow-empty", "-m", "race"),
+            ("git", "push", "-q", "origin", "main"),
+        ):
+            subprocess.run(args, cwd=other, check=True, capture_output=True)
+        run("git", "commit", "-q", "--allow-empty", "-m", "changelog")
+        run("git", "tag", "v1.0.0")
+        monkeypatch.chdir(tmp_path / "local")
+        with pytest.raises(bump.BumpError):
+            bump.push_release("v1.0.0")
+        refs = subprocess.run(
+            ("git", "ls-remote", "--tags", str(remote)), check=True, capture_output=True, text=True
+        ).stdout
+        assert "v1.0.0" not in refs
+
+
 class TestDynamicBumpCommands:
     """The bump runs against a scratch project, never the repo's own manifest."""
 
