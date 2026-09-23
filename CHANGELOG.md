@@ -17,6 +17,14 @@ You *may* edit previous changelogs to fix problems like typo corrections or such
 
 <!-- towncrier release notes start -->
 
+## github-actions v1.8.1 (2026-09-23)
+
+### Bug Fixes
+
+- The bump now pushes the branch and its release tag atomically,
+  so CI triggered by the branch push always sees the tag. ([#41](https://github.com/climate-resource/github-actions/pull/41))
+
+
 ## github-actions v1.8.0 (2026-09-16)
 
 ### Deprecations
