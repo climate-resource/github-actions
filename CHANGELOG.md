@@ -17,6 +17,13 @@ You *may* edit previous changelogs to fix problems like typo corrections or such
 
 <!-- towncrier release notes start -->
 
+## github-actions v1.9.0 (2026-11-10)
+
+### Features
+
+- Added a `resource-usage` action that reports the job's CPU and memory use in the job summary. ([#44](https://github.com/climate-resource/github-actions/pull/44))
+
+
 ## github-actions v1.8.1 (2026-09-23)
 
 ### Bug Fixes
