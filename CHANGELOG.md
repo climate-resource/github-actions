@@ -17,6 +17,13 @@ You *may* edit previous changelogs to fix problems like typo corrections or such
 
 <!-- towncrier release notes start -->
 
+## github-actions v1.10.0 (2026-11-10)
+
+### Features
+
+- Adds `git-mirror-checkout`, which checks out from a local bare mirror on the runner and falls back to `actions/checkout`. ([#45](https://github.com/climate-resource/github-actions/pull/45))
+
+
 ## github-actions v1.9.0 (2026-11-10)
 
 ### Features
