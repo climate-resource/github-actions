@@ -1,0 +1,9 @@
+name: Report resource usage
+description: >
+  Samples the job container's cgroup from this step to the end of the job,
+  then writes CPU and memory use to the job summary and a notice.
+
+runs:
+  using: node24
+  main: main.mjs
+  post: post.mjs
