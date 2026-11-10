@@ -1,0 +1,41 @@
+name: Resource usage
+
+on:
+  pull_request:
+    paths:
+      - "resource-usage/**"
+      - ".github/workflows/resource-usage.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "resource-usage/**"
+      - ".github/workflows/resource-usage.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  # A container job has its own cgroup, like a Kubernetes runner pod.
+  container:
+    runs-on: ubuntu-latest
+    container: node:24-slim
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Report resource usage
+        uses: ./resource-usage
+
+      - name: Run tests
+        run: node --test resource-usage/resource-usage.test.mjs
+
+  # On the runner host the root cgroup has no memory accounting, so the action only leaves a notice.
+  host:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Report resource usage
+        uses: ./resource-usage

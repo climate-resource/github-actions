@@ -4,11 +4,12 @@ Reusable GitHub Actions and workflows for Climate Resource repositories.
 
 ## Actions
 
-| Action                           | Description                                                          |
-| -------------------------------- | -------------------------------------------------------------------- |
-| [setup-uv](./setup-uv)           | Set up uv with optional CodeArtifact access                          |
-| [bump-version](./bump-version)   | Bump version with `uv version`, towncrier changelog, tag, dev-commit |
-| [draft-release](./draft-release) | Create a draft GitHub release with notes and artifacts               |
+| Action                             | Description                                                          |
+| ---------------------------------- | -------------------------------------------------------------------- |
+| [setup-uv](./setup-uv)             | Set up uv with optional CodeArtifact access                          |
+| [bump-version](./bump-version)     | Bump version with `uv version`, towncrier changelog, tag, dev-commit |
+| [draft-release](./draft-release)   | Create a draft GitHub release with notes and artifacts               |
+| [resource-usage](./resource-usage) | Report the job's CPU and memory use in the job summary               |
 
 [notify-flux](./notify-flux) notifies Flux after an image is published. It is deprecated, because Flux polls for OCI deployment bundles.
 
@@ -30,6 +31,7 @@ Reference actions and workflows using the full path:
 - uses: climate-resource/github-actions/setup-uv@v1
 - uses: climate-resource/github-actions/bump-version@v1
 - uses: climate-resource/github-actions/draft-release@v1
+- uses: climate-resource/github-actions/resource-usage@v1
 ```
 
 ```yaml
@@ -164,8 +166,6 @@ and `bump-rule` is applied to it exactly as it would be to a version read from `
 Nothing is written to `pyproject.toml`, no lockfile is refreshed, and no post-tag commit is landed,
 so `pre-release-bump`, `pre-release-base` and `workspace-packages` are ignored.
 The changelog build and `pre-commit-command` still run, and their changes land in the tagged commit.
-
-
 
 ### Skipping the changelog or the pre-release dev commit
 
