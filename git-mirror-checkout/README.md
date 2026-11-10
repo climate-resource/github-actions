@@ -8,7 +8,7 @@ Without a usable mirror it runs `actions/checkout` instead.
 steps:
   - uses: climate-resource/github-actions/git-mirror-checkout@v1
     with:
-      mirror: /mnt/git-mirrors/${{ github.repository }}.git
+      mirror: /path/to/mirrors/${{ github.repository }}.git
 ```
 
 | Input         | Default               | Description                                                            |

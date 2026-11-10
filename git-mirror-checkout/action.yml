@@ -27,7 +27,8 @@ runs:
       env:
         MIRROR: ${{ inputs.mirror }}
       run: |
-        if [ -n "$MIRROR" ] && git --git-dir "$MIRROR" rev-parse --quiet --verify HEAD > /dev/null 2>&1; then
+        # Any ref will do, because a mirror that fetches one branch can leave HEAD unborn.
+        if [ -n "$MIRROR" ] && [ -n "$(git --git-dir "$MIRROR" for-each-ref --count=1 2> /dev/null)" ]; then
           echo "objects=$(cd "$MIRROR" && pwd -P)/objects" >> "$GITHUB_OUTPUT"
         else
           echo "No usable git mirror at '$MIRROR', so using actions/checkout."

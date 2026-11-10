@@ -24,8 +24,11 @@ jobs:
         with:
           path: action
 
+      # One branch under a name HEAD does not point at, as a mirror that fetches one branch has.
       - name: Make a mirror
-        run: git clone --quiet --bare "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "$RUNNER_TEMP/mirror.git"
+        run: |
+          git init --quiet --bare --initial-branch=unborn "$RUNNER_TEMP/mirror.git"
+          git -C "$RUNNER_TEMP/mirror.git" fetch --quiet --no-tags "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "+HEAD:refs/heads/main"
 
       - id: checkout
         uses: ./action/git-mirror-checkout
