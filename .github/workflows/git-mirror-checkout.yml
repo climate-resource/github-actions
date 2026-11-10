@@ -42,16 +42,15 @@ jobs:
           test "$(git rev-list --count HEAD)" -gt 1
           git fetch --quiet origin main
 
+  # The fallback cleans the workspace, so the action under test sits in a checkout it keeps.
   fallback:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the action
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          path: action
 
       - id: checkout
-        uses: ./action/git-mirror-checkout
+        uses: ./git-mirror-checkout
         with:
           mirror: ${{ runner.temp }}/missing.git
 
