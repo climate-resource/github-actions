@@ -25,14 +25,14 @@ const state = (file) =>
       .map(([key, value]) => [`STATE_${key}`, value]),
   );
 
-const samplers = () =>
+// Only samplers logging under this test's directory, not the one the job itself runs.
+const samplers = (dir) =>
   readdirSync("/proc")
     .filter((pid) => /^\d+$/.test(pid))
     .filter((pid) => {
       try {
-        return readFileSync(`/proc/${pid}/cmdline`, "utf8").includes(
-          "sampler.mjs",
-        );
+        const cmdline = readFileSync(`/proc/${pid}/cmdline`, "utf8");
+        return cmdline.includes("sampler.mjs") && cmdline.includes(dir);
       } catch {
         return false;
       }
@@ -63,7 +63,7 @@ test(
     const summary = readFileSync(env.GITHUB_STEP_SUMMARY, "utf8");
     assert.match(summary, /### Resources: test on local/);
     assert.match(summary, /\| Memory peak \| \d+\.\d GiB/);
-    assert.deepEqual(samplers(), []);
+    assert.deepEqual(samplers(env.RUNNER_TEMP), []);
   },
 );
 
@@ -75,7 +75,7 @@ test("stops the sampler even before it has logged a sample", { skip }, () => {
     ...state(env.GITHUB_STATE),
     STATE_log: join(env.RUNNER_TEMP, "missing"),
   });
-  assert.deepEqual(samplers(), []);
+  assert.deepEqual(samplers(env.RUNNER_TEMP), []);
 });
 
 test(
@@ -87,6 +87,6 @@ test(
       run("main.mjs", env),
       /::notice::Resource usage is not reported/,
     );
-    assert.deepEqual(samplers(), []);
+    assert.deepEqual(samplers(env.RUNNER_TEMP), []);
   },
 );
