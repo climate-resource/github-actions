@@ -1,0 +1,60 @@
+name: Check out from a git mirror
+description: >
+  Checks out the commit under test into the workspace, borrowing objects from a local bare mirror,
+  and falls back to actions/checkout when the mirror is missing.
+
+inputs:
+  mirror:
+    description: Path to a bare mirror of this repository on the runner. Empty means use actions/checkout.
+    default: ""
+  fetch-depth:
+    description: History for the actions/checkout fallback. A mirror checkout always has full history.
+    default: "1"
+  token:
+    description: Token used to fetch, and kept in the local git config for later steps.
+    default: ${{ github.token }}
+
+outputs:
+  source:
+    description: "`mirror` or `checkout`, depending on how the workspace was checked out."
+    value: ${{ steps.mirror.outputs.objects && 'mirror' || 'checkout' }}
+
+runs:
+  using: composite
+  steps:
+    - id: mirror
+      shell: bash
+      env:
+        MIRROR: ${{ inputs.mirror }}
+      run: |
+        # Any ref will do, because a mirror that fetches one branch can leave HEAD unborn.
+        if [ -n "$MIRROR" ] && [ -n "$(git --git-dir "$MIRROR" for-each-ref --count=1 2> /dev/null)" ]; then
+          echo "objects=$(cd "$MIRROR" && pwd -P)/objects" >> "$GITHUB_OUTPUT"
+        else
+          echo "No usable git mirror at '$MIRROR', so using actions/checkout."
+        fi
+
+    - if: steps.mirror.outputs.objects
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      env:
+        OBJECTS: ${{ steps.mirror.outputs.objects }}
+        TOKEN: ${{ inputs.token }}
+      run: |
+        credentials=$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)
+        echo "::add-mask::$credentials"
+        git init --quiet .
+        echo "$OBJECTS" > .git/objects/info/alternates
+        git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
+        # Kept in the local config, as actions/checkout does, so later steps can fetch.
+        git config "http.$GITHUB_SERVER_URL/.extraheader" "AUTHORIZATION: basic $credentials"
+        # The mirror's refs count as haves, so only commits newer than the mirror are sent.
+        git fetch --quiet --no-tags origin "+$GITHUB_SHA:refs/remotes/origin/HEAD"
+        git checkout --quiet --detach "$GITHUB_SHA"
+        echo "Checked out $(git rev-parse --short HEAD) using the mirror."
+
+    - if: ${{ !steps.mirror.outputs.objects }}
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        fetch-depth: ${{ inputs.fetch-depth }}
+        token: ${{ inputs.token }}

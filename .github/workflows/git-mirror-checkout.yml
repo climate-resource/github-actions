@@ -1,0 +1,66 @@
+name: Git mirror checkout
+
+on:
+  pull_request:
+    paths:
+      - "git-mirror-checkout/**"
+      - ".github/workflows/git-mirror-checkout.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "git-mirror-checkout/**"
+      - ".github/workflows/git-mirror-checkout.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the action
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: action
+
+      # One branch under a name HEAD does not point at, as a mirror that fetches one branch has.
+      - name: Make a mirror
+        run: |
+          git init --quiet --bare --initial-branch=unborn "$RUNNER_TEMP/mirror.git"
+          git -C "$RUNNER_TEMP/mirror.git" fetch --quiet --no-tags "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "+HEAD:refs/heads/main"
+
+      - id: checkout
+        uses: ./action/git-mirror-checkout
+        with:
+          mirror: ${{ runner.temp }}/mirror.git
+
+      - name: Check the workspace borrows from the mirror
+        env:
+          SOURCE: ${{ steps.checkout.outputs.source }}
+        run: |
+          test "$SOURCE" = mirror
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          grep -qF "$RUNNER_TEMP/mirror.git/objects" .git/objects/info/alternates
+          test "$(git rev-list --count HEAD)" -gt 1
+          git fetch --quiet origin main
+
+  # The fallback cleans the workspace, so the action under test sits in a checkout it keeps.
+  fallback:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the action
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - id: checkout
+        uses: ./git-mirror-checkout
+        with:
+          mirror: ${{ runner.temp }}/missing.git
+
+      - name: Check actions/checkout ran
+        env:
+          SOURCE: ${{ steps.checkout.outputs.source }}
+        run: |
+          test "$SOURCE" = checkout
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test ! -e .git/objects/info/alternates

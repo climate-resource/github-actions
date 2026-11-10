@@ -4,12 +4,13 @@ Reusable GitHub Actions and workflows for Climate Resource repositories.
 
 ## Actions
 
-| Action                             | Description                                                          |
-| ---------------------------------- | -------------------------------------------------------------------- |
-| [setup-uv](./setup-uv)             | Set up uv with optional CodeArtifact access                          |
-| [bump-version](./bump-version)     | Bump version with `uv version`, towncrier changelog, tag, dev-commit |
-| [draft-release](./draft-release)   | Create a draft GitHub release with notes and artifacts               |
-| [resource-usage](./resource-usage) | Report the job's CPU and memory use in the job summary               |
+| Action                                       | Description                                                          |
+| -------------------------------------------- | -------------------------------------------------------------------- |
+| [setup-uv](./setup-uv)                       | Set up uv with optional CodeArtifact access                          |
+| [bump-version](./bump-version)               | Bump version with `uv version`, towncrier changelog, tag, dev-commit |
+| [draft-release](./draft-release)             | Create a draft GitHub release with notes and artifacts               |
+| [resource-usage](./resource-usage)           | Report the job's CPU and memory use in the job summary               |
+| [git-mirror-checkout](./git-mirror-checkout) | Check out using a local git mirror, falling back to actions/checkout |
 
 [notify-flux](./notify-flux) notifies Flux after an image is published. It is deprecated, because Flux polls for OCI deployment bundles.
 
@@ -32,6 +33,7 @@ Reference actions and workflows using the full path:
 - uses: climate-resource/github-actions/bump-version@v1
 - uses: climate-resource/github-actions/draft-release@v1
 - uses: climate-resource/github-actions/resource-usage@v1
+- uses: climate-resource/github-actions/git-mirror-checkout@v1
 ```
 
 ```yaml
