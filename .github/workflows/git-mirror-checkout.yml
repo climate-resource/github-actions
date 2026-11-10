@@ -1,0 +1,64 @@
+name: Git mirror checkout
+
+on:
+  pull_request:
+    paths:
+      - "git-mirror-checkout/**"
+      - ".github/workflows/git-mirror-checkout.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "git-mirror-checkout/**"
+      - ".github/workflows/git-mirror-checkout.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the action
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: action
+
+      - name: Make a mirror
+        run: git clone --quiet --bare "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "$RUNNER_TEMP/mirror.git"
+
+      - id: checkout
+        uses: ./action/git-mirror-checkout
+        with:
+          mirror: ${{ runner.temp }}/mirror.git
+
+      - name: Check the workspace borrows from the mirror
+        env:
+          SOURCE: ${{ steps.checkout.outputs.source }}
+        run: |
+          test "$SOURCE" = mirror
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          grep -qF "$RUNNER_TEMP/mirror.git/objects" .git/objects/info/alternates
+          test "$(git rev-list --count HEAD)" -gt 1
+          git fetch --quiet origin main
+
+  fallback:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the action
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: action
+
+      - id: checkout
+        uses: ./action/git-mirror-checkout
+        with:
+          mirror: ${{ runner.temp }}/missing.git
+
+      - name: Check actions/checkout ran
+        env:
+          SOURCE: ${{ steps.checkout.outputs.source }}
+        run: |
+          test "$SOURCE" = checkout
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test ! -e .git/objects/info/alternates
