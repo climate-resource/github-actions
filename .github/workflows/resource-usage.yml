@@ -19,7 +19,7 @@ jobs:
   # A container job has its own cgroup, like a Kubernetes runner pod.
   container:
     runs-on: ubuntu-latest
-    container: node:24-slim
+    container: node:26-slim@sha256:abe7e5a82b61a8ef67b315b85497c9e65173387ccf2f4a029248184b8e020be5
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
